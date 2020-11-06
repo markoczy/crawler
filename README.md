@@ -1,2 +1,2 @@
 # Crawler
-A Web Crawler based on Puppeteer
+A Web Crawler based on Go and chromedp
