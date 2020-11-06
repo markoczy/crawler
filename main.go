@@ -1,11 +1,11 @@
-// Command screenshot is a chromedp example demonstrating how to take a
-// screenshot of a specific element and of the entire browser viewport.
 package main
 
 import (
 	"context"
+	"flag"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -13,16 +13,44 @@ import (
 	"golang.org/x/exp/errors/fmt"
 )
 
+const (
+	errUndefinedFlag = 100
+	unset            = "<unset>"
+)
+
+var (
+	url string
+)
+
+func parseFlags() {
+	urlPtr := flag.String("url", unset, "the url")
+
+	flag.Parse()
+	url = *urlPtr
+	if url == unset {
+		exitErrUndefined("url")
+	}
+}
+
+func exitErrUndefined(val string) {
+	flag.Usage()
+	fmt.Printf("\nMandatory value '%s' was not defined\n", val)
+	os.Exit(errUndefinedFlag)
+}
+
 func main() {
+	parseFlags()
+
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 	var links []string
+	var err error
 
-	if err := chromedp.Run(ctx, getLinks(`https://www.google.ch/`, &links)); err != nil {
+	if links, err = getLinks(ctx, url, 10*time.Second); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Links", links)
-
+	chromedp.Cancel(ctx)
 }
 
 // Helpers
@@ -49,9 +77,14 @@ func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
 	}
 }
 
-func getLinks(url string, ret *[]string) chromedp.Tasks {
-	return chromedp.Tasks{
-		action.NavigateAndWaitLoaded(url, 10*time.Second),
-		chromedp.Evaluate(getScript("getLinks.js"), ret),
+func getLinks(ctx context.Context, url string, timeout time.Duration) ([]string, error) {
+	var ret []string
+	tasks := chromedp.Tasks{
+		action.NavigateAndWaitLoaded(url, timeout),
+		chromedp.Evaluate(getScript("getLinks.js"), &ret),
 	}
+	if err := chromedp.Run(ctx, tasks); err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
