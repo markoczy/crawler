@@ -1,3 +1,6 @@
+package js
+
+const GetLinks = `
 function getLinks() {
     var array = [];
     if (!document) return array;
@@ -10,3 +13,4 @@ function getLinks() {
     return array;
 }
 getLinks();
+`

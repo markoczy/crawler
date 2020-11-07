@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/markoczy/crawler/actions"
+	"github.com/markoczy/crawler/js"
 	"github.com/markoczy/crawler/types"
 	"golang.org/x/exp/errors/fmt"
 )
@@ -67,12 +67,6 @@ func check(err error) {
 	}
 }
 
-func getScript(name string) string {
-	dat, err := ioutil.ReadFile("js/" + name)
-	check(err)
-	return string(dat)
-}
-
 // Maybe outsource
 
 func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
@@ -87,7 +81,7 @@ func getLinks(ctx context.Context, url string, timeout time.Duration) ([]string,
 	var ret []string
 	tasks := chromedp.Tasks{
 		actions.NavigateAndWaitLoaded(url, timeout),
-		chromedp.Evaluate(getScript("getLinks.js"), &ret),
+		chromedp.Evaluate(js.GetLinks, &ret),
 	}
 	if err := chromedp.Run(ctx, tasks); err != nil {
 		return ret, err
