@@ -121,10 +121,6 @@ func getLinksRecursive(ctx context.Context, url string, timeout time.Duration, d
 	for _, link := range links {
 		more := getLinksRecursive(ctx, link, timeout, depth+1, maxDepth, visited)
 		ret.Add(more.Values()...)
-		// if at max depth, the site was not crawled...
-		if depth < maxDepth {
-			visited.Add(link)
-		}
 	}
 	return ret
 }

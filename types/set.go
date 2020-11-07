@@ -36,3 +36,7 @@ func (set *StringSet) Copy() *StringSet {
 	}
 	return ret
 }
+
+func (set *StringSet) Len() int {
+	return len(*set)
+}
