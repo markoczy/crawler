@@ -1,4 +1,4 @@
-package action
+package actions
 
 import (
 	"context"
@@ -9,24 +9,31 @@ import (
 	"golang.org/x/exp/errors/fmt"
 )
 
+func recoverChannelClosed() {
+	recover()
+}
+
 type NavigateAndWaitLoadedAction struct {
 	url     string
 	timeout time.Duration
 }
 
 func (action *NavigateAndWaitLoadedAction) Do(ctx context.Context) error {
-	loadErr := make(chan error)
+	loadErr := make(chan error, 1)
 	go func() {
+		defer recoverChannelClosed()
 		time.Sleep(action.timeout)
 		loadErr <- fmt.Errorf("Timeout while loading DOM Content")
 	}()
 	chromedp.ListenTarget(ctx, func(v interface{}) {
+		defer recoverChannelClosed()
 		switch v.(type) {
 		case *page.EventDomContentEventFired:
 			loadErr <- nil
 		}
 	})
 	go func() {
+		defer recoverChannelClosed()
 		err := chromedp.Run(ctx, chromedp.Tasks{
 			chromedp.Navigate(action.url),
 		})
@@ -34,7 +41,9 @@ func (action *NavigateAndWaitLoadedAction) Do(ctx context.Context) error {
 			loadErr <- err
 		}
 	}()
-	return <-loadErr
+	err := <-loadErr
+	close(loadErr)
+	return err
 }
 
 func NavigateAndWaitLoaded(url string, timeout time.Duration) chromedp.Action {
