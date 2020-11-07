@@ -2,58 +2,27 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
-	"os"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/markoczy/crawler/actions"
+	"github.com/markoczy/crawler/cli"
 	"github.com/markoczy/crawler/js"
 	"github.com/markoczy/crawler/types"
 	"golang.org/x/exp/errors/fmt"
 )
 
-const (
-	errUndefinedFlag = 100
-	unset            = "<unset>"
-)
-
-var (
-	url     string
-	depth   int
-	timeout time.Duration
-)
-
-func parseFlags() {
-	urlPtr := flag.String("url", unset, "the initial url (prefix http or https needed)")
-	timeoutPtr := flag.Int64("timeout", 10000, "general timeout in millis when loading a webpage")
-	depthPtr := flag.Int("depth", 0, "max depth for link crawler")
-
-	flag.Parse()
-	url, depth = *urlPtr, *depthPtr
-	timeout = time.Duration(*timeoutPtr) * time.Millisecond
-	if url == unset {
-		exitErrUndefined("url")
-	}
-}
-
-func exitErrUndefined(val string) {
-	flag.Usage()
-	fmt.Printf("\nERROR: Mandatory value '%s' was not defined\n", val)
-	os.Exit(errUndefinedFlag)
-}
-
 func main() {
-	parseFlags()
-	execGetLinks()
+	cfg := cli.ParseFlags()
+	fmt.Println("Headers:", cfg.Headers())
 }
 
-func execGetLinks() {
+func execGetLinks(cfg cli.CrawlerConfig) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
-	links := getLinksRecursive(ctx, url, timeout, 0, depth, types.NewStringSet())
+	links := getLinksRecursive(ctx, cfg.Url(), cfg.Timeout(), 0, cfg.Depth(), types.NewStringSet())
 	for _, link := range links.Values() {
 		fmt.Println(link)
 	}
