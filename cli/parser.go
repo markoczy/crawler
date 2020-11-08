@@ -27,7 +27,7 @@ func ParseFlags() CrawlerConfig {
 	var headerFlags arrayValue
 	cfg := crawlerConfig{}
 
-	urlPtr := flag.String("url", unset, "the initial url (prefix http or https needed)")
+	urlPtr := flag.String("url", unset, "the initial url,prefix http or https needed, supports permutations in square brackets like '[1-100]' or '[a,b,c]'")
 	timeoutPtr := flag.Int64("timeout", 10000, "general timeout in millis when loading a webpage")
 	depthPtr := flag.Int("depth", 0, "max depth for link crawler")
 	flag.Var(&headerFlags, "header", "headers to set, multiple allowed, prefix '@' to adress a file")

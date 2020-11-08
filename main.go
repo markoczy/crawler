@@ -9,6 +9,7 @@ import (
 	"github.com/markoczy/crawler/actions"
 	"github.com/markoczy/crawler/cli"
 	"github.com/markoczy/crawler/js"
+	"github.com/markoczy/crawler/perm"
 	"github.com/markoczy/crawler/types"
 	"golang.org/x/exp/errors/fmt"
 )
@@ -39,14 +40,20 @@ func check(err error) {
 // Maybe outsource
 
 func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
-	links := getLinksRecursive(cfg, ctx, cfg.Url(), 0, types.NewStringSet())
-	for _, link := range links.Values() {
-		b := []byte(link)
-		if !cfg.Include().Match(b) || cfg.Exclude().Match(b) {
-			links.Remove(link)
+	perms := perm.Perm(cfg.Url())
+	allLinks := types.NewStringSet()
+	allVisited := types.NewStringSet()
+	for _, perm := range perms {
+		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
+		for _, link := range links.Values() {
+			b := []byte(link)
+			if !cfg.Include().Match(b) || cfg.Exclude().Match(b) {
+				links.Remove(link)
+			}
 		}
+		allLinks.Add(links.Values()...)
 	}
-	return links
+	return allLinks
 }
 
 func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.StringSet) *types.StringSet {
