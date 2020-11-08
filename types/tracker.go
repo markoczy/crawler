@@ -1,7 +1,7 @@
 package types
 
-// Currently not used, clould track on what level a site was visted
-// Should be used in combination with bfs to avoid duplicate visits
+// Currently not used, could track on what level a site was visted
+// Should be used in combination with bfs to avoid still having duplicate visits
 
 type Tracker map[string]int
 
