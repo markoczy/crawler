@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -11,13 +12,21 @@ type CrawlerConfig interface {
 	Depth() int
 	Timeout() time.Duration
 	Headers() map[string]interface{}
+	Include() *regexp.Regexp
+	Exclude() *regexp.Regexp
+	FollowInclude() *regexp.Regexp
+	FollowExclude() *regexp.Regexp
 }
 
 type crawlerConfig struct {
-	url     string
-	depth   int
-	timeout time.Duration
-	headers map[string]interface{}
+	url           string
+	depth         int
+	timeout       time.Duration
+	headers       map[string]interface{}
+	include       *regexp.Regexp
+	exclude       *regexp.Regexp
+	followInclude *regexp.Regexp
+	followExclude *regexp.Regexp
 }
 
 func (cfg *crawlerConfig) Url() string {
@@ -34,6 +43,22 @@ func (cfg *crawlerConfig) Timeout() time.Duration {
 
 func (cfg *crawlerConfig) Headers() map[string]interface{} {
 	return cfg.headers
+}
+
+func (cfg *crawlerConfig) Include() *regexp.Regexp {
+	return cfg.include
+}
+
+func (cfg *crawlerConfig) Exclude() *regexp.Regexp {
+	return cfg.exclude
+}
+
+func (cfg *crawlerConfig) FollowInclude() *regexp.Regexp {
+	return cfg.followInclude
+}
+
+func (cfg *crawlerConfig) FollowExclude() *regexp.Regexp {
+	return cfg.followExclude
 }
 
 type arrayValue []string

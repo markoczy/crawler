@@ -16,14 +16,13 @@ import (
 func main() {
 	cfg := cli.ParseFlags()
 	execGetLinks(cfg)
-	// fmt.Println("Headers:", cfg.Headers())
 }
 
 func execGetLinks(cfg cli.CrawlerConfig) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
-	links := getLinksRecursive(cfg, ctx, cfg.Url(), 0, types.NewStringSet())
+	links := getAllLinks(cfg, ctx)
 	for _, link := range links.Values() {
 		fmt.Println(link)
 	}
@@ -39,20 +38,15 @@ func check(err error) {
 
 // Maybe outsource
 
-func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string, error) {
-	var ret []string
-	tasks := chromedp.Tasks{}
-	if len(cfg.Headers()) > 0 {
-		tasks = append(tasks, network.SetExtraHTTPHeaders(network.Headers(cfg.Headers())))
+func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
+	links := getLinksRecursive(cfg, ctx, cfg.Url(), 0, types.NewStringSet())
+	for _, link := range links.Values() {
+		b := []byte(link)
+		if !cfg.Include().Match(b) || cfg.Exclude().Match(b) {
+			links.Remove(link)
+		}
 	}
-	tasks = append(tasks,
-		actions.NavigateAndWaitLoaded(url, cfg.Timeout()),
-		chromedp.Evaluate(js.GetLinks, &ret),
-	)
-	if err := chromedp.Run(ctx, tasks); err != nil {
-		return ret, err
-	}
-	return ret, nil
+	return links
 }
 
 func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.StringSet) *types.StringSet {
@@ -83,4 +77,27 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 		ret.Add(more.Values()...)
 	}
 	return ret
+}
+
+func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string, error) {
+	var buf []string
+	tasks := chromedp.Tasks{}
+	if len(cfg.Headers()) > 0 {
+		tasks = append(tasks, network.SetExtraHTTPHeaders(network.Headers(cfg.Headers())))
+	}
+	tasks = append(tasks,
+		actions.NavigateAndWaitLoaded(url, cfg.Timeout()),
+		chromedp.Evaluate(js.GetLinks, &buf),
+	)
+	if err := chromedp.Run(ctx, tasks); err != nil {
+		return []string{}, err
+	}
+	ret := []string{}
+	for _, val := range buf {
+		b := []byte(val)
+		if cfg.FollowInclude().Match(b) && !cfg.FollowExclude().Match(b) {
+			ret = append(ret, val)
+		}
+	}
+	return ret, nil
 }

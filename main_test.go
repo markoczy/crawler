@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/markoczy/crawler/types"
+	"github.com/markoczy/crawler/cli"
 )
 
 func TestMain(m *testing.M) {
@@ -23,15 +25,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	// Setting up signal capturing
-	// stop := make(chan os.Signal, 1)
-	// signal.Notify(stop, os.Interrupt)
-
 	ret := m.Run()
-
-	// Waiting for SIGINT (pkill -2)
-	// <-stop
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
@@ -143,7 +137,15 @@ func testGetLinks(t *testing.T, depth int, timeout time.Duration, expected []str
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
-	links := getLinksRecursive(ctx, "http://localhost:50000", 1*time.Second, 0, depth, types.NewStringSet())
+	os.Args = []string{"cmd",
+		"-url=" + "http://localhost:50000/",
+		"-depth=" + strconv.Itoa(depth),
+		"-timeout=" + strconv.Itoa(int(timeout)),
+	}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	cfg := cli.ParseFlags()
+
+	links := getAllLinks(cfg, ctx)
 	for _, link := range links.Values() {
 		log.Println("Link:", link)
 	}
