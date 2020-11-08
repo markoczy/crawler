@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -14,6 +15,7 @@ import (
 const (
 	errUndefinedFlag = 100
 	errParseFailed   = 200
+	errGeneral       = 500
 	unset            = "<unset>"
 	none             = "none"
 	empty            = ""
@@ -37,6 +39,7 @@ func ParseFlags() CrawlerConfig {
 	excludePtr := flag.String("exclude", matchNothing, "regex of excluded links, defaults to 'match nothing' (hint: prefix '(?flags)' to define flags)")
 	followIncludePtr := flag.String("follow-include", matchAll, "regex of included links to follow, only applies if depth>0, defaults to 'match all' (hint: prefix '(?flags)' to define flags)")
 	followExcludePtr := flag.String("follow-exclude", matchNothing, "regex of excluded links to follow, only applies if depth>0, defaults to 'match nothing' (hint: prefix '(?flags)' to define flags)")
+	logFilePtr := flag.String("logfile", unset, "path to log file, defaults to stdout when unset")
 	flag.Parse()
 
 	cfg.include = parseRegex(*includePtr, "include")
@@ -46,7 +49,14 @@ func ParseFlags() CrawlerConfig {
 
 	cfg.url, cfg.depth = *urlPtr, *depthPtr
 	cfg.timeout = time.Duration(*timeoutPtr) * time.Millisecond
-
+	logFile := *logFilePtr
+	if logFile != unset {
+		var file *os.File
+		if file, err = os.Create(logFile); err != nil {
+			exitError("Failed to create log file "+logFile, errGeneral)
+		}
+		log.SetOutput(file)
+	}
 	if cfg.url == unset {
 		exitError(fmt.Sprintf("Mandatory value 'url' was not defined"), errUndefinedFlag)
 	}
