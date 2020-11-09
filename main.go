@@ -123,10 +123,11 @@ func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string,
 	}
 	ret := []string{}
 	for _, val := range buf {
-		if cfg.FollowInclude().MatchString(val) && !cfg.FollowExclude().MatchString(val) {
+		if !cfg.FollowInclude().MatchString(val) || cfg.FollowExclude().MatchString(val) {
 			fmt.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", val)
-			ret = append(ret, val)
+			continue
 		}
+		ret = append(ret, val)
 	}
 	return ret, nil
 }
