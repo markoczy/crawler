@@ -9,6 +9,7 @@ import (
 
 type CrawlerConfig interface {
 	Url() string
+	Download() bool
 	Depth() int
 	Timeout() time.Duration
 	Headers() map[string]interface{}
@@ -16,21 +17,32 @@ type CrawlerConfig interface {
 	Exclude() *regexp.Regexp
 	FollowInclude() *regexp.Regexp
 	FollowExclude() *regexp.Regexp
+	NamingCapture() *regexp.Regexp
+	NamingCaptureFolders() bool
+	NamingPattern() string
 }
 
 type crawlerConfig struct {
-	url           string
-	depth         int
-	timeout       time.Duration
-	headers       map[string]interface{}
-	include       *regexp.Regexp
-	exclude       *regexp.Regexp
-	followInclude *regexp.Regexp
-	followExclude *regexp.Regexp
+	url                  string
+	download             bool
+	depth                int
+	timeout              time.Duration
+	headers              map[string]interface{}
+	include              *regexp.Regexp
+	exclude              *regexp.Regexp
+	followInclude        *regexp.Regexp
+	followExclude        *regexp.Regexp
+	namingCapture        *regexp.Regexp
+	namingCaptureFolders bool
+	namingPattern        string
 }
 
 func (cfg *crawlerConfig) Url() string {
 	return cfg.url
+}
+
+func (cfg *crawlerConfig) Download() bool {
+	return cfg.download
 }
 
 func (cfg *crawlerConfig) Depth() int {
@@ -59,6 +71,18 @@ func (cfg *crawlerConfig) FollowInclude() *regexp.Regexp {
 
 func (cfg *crawlerConfig) FollowExclude() *regexp.Regexp {
 	return cfg.followExclude
+}
+
+func (cfg *crawlerConfig) NamingCapture() *regexp.Regexp {
+	return cfg.namingCapture
+}
+
+func (cfg *crawlerConfig) NamingCaptureFolders() bool {
+	return cfg.namingCaptureFolders
+}
+
+func (cfg *crawlerConfig) NamingPattern() string {
+	return cfg.namingPattern
 }
 
 type arrayValue []string

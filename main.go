@@ -8,6 +8,7 @@ import (
 	"github.com/chromedp/chromedp"
 	"github.com/markoczy/crawler/actions"
 	"github.com/markoczy/crawler/cli"
+	"github.com/markoczy/crawler/httpfunc"
 	"github.com/markoczy/crawler/js"
 	"github.com/markoczy/crawler/perm"
 	"github.com/markoczy/crawler/types"
@@ -16,16 +17,19 @@ import (
 
 func main() {
 	cfg := cli.ParseFlags()
-	execGetLinks(cfg)
-}
-
-func execGetLinks(cfg cli.CrawlerConfig) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
 	links := getAllLinks(cfg, ctx)
 	for _, link := range links.Values() {
-		fmt.Println(link)
+		if cfg.Download() {
+			fmt.Printf("Downloading from URL '%s'\n", link)
+			if err := httpfunc.DownloadFile(cfg, link); err != nil {
+				fmt.Printf("ERROR: Failed to download content at url '%s': %s\n", link, err.Error())
+			}
+		} else {
+			fmt.Println(link)
+		}
 	}
 }
 
@@ -42,6 +46,7 @@ func check(err error) {
 func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 	perms := perm.Perm(cfg.Url())
 	allLinks := types.NewStringSet()
+	allLinks.Add(perms...)
 	allVisited := types.NewStringSet()
 	for _, perm := range perms {
 		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
@@ -57,8 +62,8 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 }
 
 func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.StringSet) *types.StringSet {
-	// exit condition 1: over depth
-	if depth > cfg.Depth() {
+	// exit condition 1: over depth (download mode has depth-1)
+	if depth > cfg.Depth() || (cfg.Download() && depth > cfg.Depth()-1) {
 		return types.NewStringSet()
 	}
 	// exit condition 2: already visited

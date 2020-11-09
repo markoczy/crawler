@@ -29,7 +29,8 @@ func ParseFlags() CrawlerConfig {
 	var headerFlags arrayValue
 	cfg := crawlerConfig{}
 
-	urlPtr := flag.String("url", unset, "the initial url,prefix http or https needed, supports permutations in square brackets like '[1-100]' or '[a,b,c]'")
+	urlPtr := flag.String("url", unset, "the initial url, cannot be unset, prefix http or https is required, supports permutations in square brackets like '[1-100]' or '[a,b,c]'")
+	downloadPtr := flag.Bool("download", false, "switches to download mode")
 	timeoutPtr := flag.Int64("timeout", 10000, "general timeout in millis when loading a webpage")
 	depthPtr := flag.Int("depth", 0, "max depth for link crawler")
 	flag.Var(&headerFlags, "header", "headers to set, multiple allowed, prefix '@' to adress a file")
@@ -40,14 +41,22 @@ func ParseFlags() CrawlerConfig {
 	followIncludePtr := flag.String("follow-include", matchAll, "regex of included links to follow, only applies if depth>0, defaults to 'match all' (hint: prefix '(?flags)' to define flags)")
 	followExcludePtr := flag.String("follow-exclude", matchNothing, "regex of excluded links to follow, only applies if depth>0, defaults to 'match nothing' (hint: prefix '(?flags)' to define flags)")
 	logFilePtr := flag.String("logfile", unset, "path to log file, defaults to stdout when unset")
+	namingCapturePtr := flag.String("naming-capture", `^http(s|)://(?P<path>.*)/(?P<name>\w+)(\.|)(?P<ext>(\.\w+)|)$`, "regex for capturing groups of output file name, use in combination with 'naming-pattern', only applies to download mode")
+	namingCaptureFoldersPtr := flag.Bool("naming-capture-folders", false, "specifies wether '/' inside capture groups are treated as subfolders, if false the '/' characters in the capture groups are replaced by '_', only applies to download mode")
+	namingPatternPtr := flag.String("naming-pattern", "<path>/<name><ext>", "pattern to resolve output file name, use '<name>' to reference a capture group from 'naming-capture' flag, only applies to download mode")
 	flag.Parse()
 
+	cfg.url = *urlPtr
+	cfg.download = *downloadPtr
+	cfg.depth = *depthPtr
 	cfg.include = parseRegex(*includePtr, "include")
 	cfg.exclude = parseRegex(*excludePtr, "exclude")
 	cfg.followInclude = parseRegex(*followIncludePtr, "follow-include")
 	cfg.followExclude = parseRegex(*followExcludePtr, "follow-exclude")
+	cfg.namingCapture = parseRegex(*namingCapturePtr, "naming-pattern")
+	cfg.namingCaptureFolders = *namingCaptureFoldersPtr
+	cfg.namingPattern = *namingPatternPtr
 
-	cfg.url, cfg.depth = *urlPtr, *depthPtr
 	cfg.timeout = time.Duration(*timeoutPtr) * time.Millisecond
 	logFile := *logFilePtr
 	if logFile != unset {
