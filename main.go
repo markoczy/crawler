@@ -64,7 +64,7 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 		}
 		allLinks.Add(url)
 	}
-	allVisited := types.NewStringSet()
+	allVisited := types.NewTracker()
 	for _, perm := range cfg.Urls() {
 		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
 		for _, link := range links.Values() {
@@ -78,13 +78,13 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 	return allLinks
 }
 
-func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.StringSet) *types.StringSet {
+func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.Tracker) *types.StringSet {
 	// exit condition 1: over depth (download mode has depth-1)
 	if depth > cfg.Depth() || (cfg.Download() && depth > cfg.Depth()-1) {
 		return types.NewStringSet()
 	}
 	// exit condition 2: already visited
-	if visited.Exists(url) {
+	if !visited.ShouldVisit(url, depth) {
 		log.Printf("Already visited '%s'\n", url)
 		return types.NewStringSet()
 	}
@@ -97,7 +97,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 	} else {
 		log.Printf("Found %d links at url '%s'\n", len(links), url)
 	}
-	visited.Add(url)
+	visited.Add(url, depth)
 	ret := types.NewStringSet()
 	ret.Add(links...)
 
