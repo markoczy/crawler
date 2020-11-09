@@ -31,6 +31,7 @@ func ParseFlags() CrawlerConfig {
 	var headerFlags arrayValue
 	cfg := crawlerConfig{}
 
+	testPtr := flag.Bool("test", false, "tests patterns and outputs download file name")
 	urlPtr := flag.String("url", unset, "the initial url, cannot be unset, prefix http or https is required, supports permutations in square brackets like '[1-100]' or '[a,b,c]', can also refer a file with prefix '@'")
 	downloadPtr := flag.Bool("download", false, "switches to download mode")
 	timeoutPtr := flag.Int64("timeout", 10000, "general timeout in millis when loading a webpage")
@@ -49,6 +50,7 @@ func ParseFlags() CrawlerConfig {
 	flag.Parse()
 
 	url := *urlPtr
+	cfg.test = *testPtr
 	cfg.download = *downloadPtr
 	cfg.depth = *depthPtr
 	cfg.include = parseRegex(*includePtr, "include")
@@ -179,4 +181,19 @@ func parseUrls(url string) []string {
 		ret = append(ret, perm.Perm(url)...)
 	}
 	return ret
+}
+
+type arrayValue []string
+
+func (i *arrayValue) String() string {
+	return fmt.Sprintf("%v", *i)
+}
+
+func (i *arrayValue) Set(value string) error {
+	*i = append(*i, strings.TrimSpace(value))
+	return nil
+}
+
+func (i *arrayValue) Values() []string {
+	return []string(*i)
 }

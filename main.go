@@ -16,15 +16,28 @@ import (
 
 func main() {
 	cfg := cli.ParseFlags()
+	log.Println("Parsed Params:", cfg)
+	if cfg.Test() {
+		test(cfg)
+		return
+	}
+	exec(cfg)
+}
+
+func test(cfg cli.CrawlerConfig) {
+	// TODO
+}
+
+func exec(cfg cli.CrawlerConfig) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
 	links := getAllLinks(cfg, ctx)
 	for _, link := range links.Values() {
 		if cfg.Download() {
-			fmt.Printf("Downloading from URL '%s'\n", link)
+			log.Printf("Downloading from URL '%s'\n", link)
 			if err := httpfunc.DownloadFile(cfg, link); err != nil {
-				fmt.Printf("ERROR: Failed to download content at url '%s': %s\n", link, err.Error())
+				log.Printf("ERROR: Failed to download content at url '%s': %s\n", link, err.Error())
 			}
 		} else {
 			fmt.Println(link)
@@ -44,7 +57,13 @@ func check(err error) {
 
 func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 	allLinks := types.NewStringSet()
-	allLinks.Add(cfg.Urls()...)
+	for _, url := range cfg.Urls() {
+		if !cfg.Include().MatchString(url) || cfg.Exclude().MatchString(url) {
+			fmt.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", url)
+			continue
+		}
+		allLinks.Add(url)
+	}
 	allVisited := types.NewStringSet()
 	for _, perm := range cfg.Urls() {
 		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
