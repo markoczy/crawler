@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/markoczy/crawler/perm"
 )
 
 const (
@@ -29,7 +31,7 @@ func ParseFlags() CrawlerConfig {
 	var headerFlags arrayValue
 	cfg := crawlerConfig{}
 
-	urlPtr := flag.String("url", unset, "the initial url, cannot be unset, prefix http or https is required, supports permutations in square brackets like '[1-100]' or '[a,b,c]'")
+	urlPtr := flag.String("url", unset, "the initial url, cannot be unset, prefix http or https is required, supports permutations in square brackets like '[1-100]' or '[a,b,c]', can also refer a file with prefix '@'")
 	downloadPtr := flag.Bool("download", false, "switches to download mode")
 	timeoutPtr := flag.Int64("timeout", 10000, "general timeout in millis when loading a webpage")
 	depthPtr := flag.Int("depth", 0, "max depth for link crawler")
@@ -46,7 +48,7 @@ func ParseFlags() CrawlerConfig {
 	namingPatternPtr := flag.String("naming-pattern", "<path>/<name><ext>", "pattern to resolve output file name, use '<name>' to reference a capture group from 'naming-capture' flag, only applies to download mode")
 	flag.Parse()
 
-	cfg.url = *urlPtr
+	url := *urlPtr
 	cfg.download = *downloadPtr
 	cfg.depth = *depthPtr
 	cfg.include = parseRegex(*includePtr, "include")
@@ -66,9 +68,10 @@ func ParseFlags() CrawlerConfig {
 		}
 		log.SetOutput(file)
 	}
-	if cfg.url == unset {
+	if url == unset {
 		exitError(fmt.Sprintf("Mandatory value 'url' was not defined"), errUndefinedFlag)
 	}
+	cfg.urls = parseUrls(url)
 	if cfg.headers, err = parseHeaderFlags(headerFlags.Values()); err != nil {
 		exitError(fmt.Sprintf("Parse of value 'header' failed: %s", err.Error()), errParseFailed)
 	}
@@ -153,6 +156,27 @@ func parseRegex(val, name string) *regexp.Regexp {
 	ret, err := regexp.Compile(val)
 	if err != nil {
 		exitError(fmt.Sprintf("Regex '%s' could not be compiled: %s", name, err.Error()), errParseFailed)
+	}
+	return ret
+}
+
+func parseUrls(url string) []string {
+	var dat []byte
+	var err error
+	ret := []string{}
+	if strings.HasPrefix(url, "@") {
+		if dat, err = ioutil.ReadFile(url[1:]); err != nil {
+			exitError(fmt.Sprintf("Could not read file '%s'", url[1:]), errParseFailed)
+		}
+		split := strings.Split(string(dat), "\n")
+		for _, v := range split {
+			cur := strings.TrimSpace(v)
+			if cur != empty {
+				ret = append(ret, perm.Perm(cur)...)
+			}
+		}
+	} else {
+		ret = append(ret, perm.Perm(url)...)
 	}
 	return ret
 }

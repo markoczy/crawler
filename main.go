@@ -10,7 +10,6 @@ import (
 	"github.com/markoczy/crawler/cli"
 	"github.com/markoczy/crawler/httpfunc"
 	"github.com/markoczy/crawler/js"
-	"github.com/markoczy/crawler/perm"
 	"github.com/markoczy/crawler/types"
 	"golang.org/x/exp/errors/fmt"
 )
@@ -44,11 +43,10 @@ func check(err error) {
 // Maybe outsource
 
 func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
-	perms := perm.Perm(cfg.Url())
 	allLinks := types.NewStringSet()
-	allLinks.Add(perms...)
+	allLinks.Add(cfg.Urls()...)
 	allVisited := types.NewStringSet()
-	for _, perm := range perms {
+	for _, perm := range cfg.Urls() {
 		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
 		for _, link := range links.Values() {
 			b := []byte(link)

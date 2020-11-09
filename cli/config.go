@@ -8,7 +8,7 @@ import (
 )
 
 type CrawlerConfig interface {
-	Url() string
+	Urls() []string
 	Download() bool
 	Depth() int
 	Timeout() time.Duration
@@ -23,7 +23,7 @@ type CrawlerConfig interface {
 }
 
 type crawlerConfig struct {
-	url                  string
+	urls                 []string
 	download             bool
 	depth                int
 	timeout              time.Duration
@@ -37,8 +37,8 @@ type crawlerConfig struct {
 	namingPattern        string
 }
 
-func (cfg *crawlerConfig) Url() string {
-	return cfg.url
+func (cfg *crawlerConfig) Urls() []string {
+	return cfg.urls
 }
 
 func (cfg *crawlerConfig) Download() bool {
