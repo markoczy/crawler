@@ -59,7 +59,7 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 	allLinks := types.NewStringSet()
 	for _, url := range cfg.Urls() {
 		if !cfg.Include().MatchString(url) || cfg.Exclude().MatchString(url) {
-			fmt.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", url)
+			log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", url)
 			continue
 		}
 		allLinks.Add(url)
@@ -69,7 +69,7 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
 		for _, link := range links.Values() {
 			if !cfg.Include().MatchString(link) || cfg.Exclude().MatchString(link) {
-				fmt.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", link)
+				log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", link)
 				links.Remove(link)
 			}
 		}
@@ -124,7 +124,7 @@ func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string,
 	ret := []string{}
 	for _, val := range buf {
 		if !cfg.FollowInclude().MatchString(val) || cfg.FollowExclude().MatchString(val) {
-			fmt.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", val)
+			log.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", val)
 			continue
 		}
 		ret = append(ret, val)

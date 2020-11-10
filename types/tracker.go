@@ -22,5 +22,5 @@ func (tracker *Tracker) Add(s string, depth int) {
 
 func (tracker *Tracker) ShouldVisit(s string, depth int) bool {
 	v, found := (*tracker)[s]
-	return !found || depth >= v
+	return !found || depth < v
 }
