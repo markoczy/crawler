@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"sort"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
@@ -32,8 +33,9 @@ func exec(cfg cli.CrawlerConfig) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
-	links := getAllLinks(cfg, ctx)
-	for _, link := range links.Values() {
+	links := getAllLinks(cfg, ctx).Values()
+	sort.Strings(links)
+	for _, link := range links {
 		if cfg.Download() {
 			log.Printf("Downloading from URL '%s'\n", link)
 			if err := httpfunc.DownloadFile(cfg, link); err != nil {
