@@ -38,6 +38,7 @@ func TestMain(m *testing.M) {
 func TestGetLinks0(t *testing.T) {
 	log.Println("Start TestGetLinks0")
 	expected := []string{
+		"http://localhost:50000/",
 		// Level 0
 		"http://localhost:50000/1/index.html",
 		"http://localhost:50000/2/index.html",
@@ -50,6 +51,7 @@ func TestGetLinks0(t *testing.T) {
 func TestGetLinks1(t *testing.T) {
 	log.Println("Start TestGetLinks1")
 	expected := []string{
+		"http://localhost:50000/",
 		// Level 0
 		"http://localhost:50000/1/index.html",
 		"http://localhost:50000/2/index.html",
@@ -67,6 +69,7 @@ func TestGetLinks1(t *testing.T) {
 func TestGetLinks2(t *testing.T) {
 	log.Println("Start TestGetLinks2")
 	expected := []string{
+		"http://localhost:50000/",
 		// Level 0
 		"http://localhost:50000/1/index.html",
 		"http://localhost:50000/2/index.html",
@@ -93,6 +96,7 @@ func TestGetLinks2(t *testing.T) {
 func TestGetLinks3(t *testing.T) {
 	log.Println("Start TestGetLinks3")
 	expected := []string{
+		"http://localhost:50000/",
 		// Level 0
 		"http://localhost:50000/1/index.html",
 		"http://localhost:50000/2/index.html",

@@ -57,13 +57,6 @@ func check(err error) {
 
 func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 	allLinks := types.NewStringSet()
-	for _, url := range cfg.Urls() {
-		if !cfg.Include().MatchString(url) || cfg.Exclude().MatchString(url) {
-			log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", url)
-			continue
-		}
-		allLinks.Add(url)
-	}
 	allVisited := types.NewTracker()
 	for _, perm := range cfg.Urls() {
 		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
@@ -79,14 +72,16 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 }
 
 func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.Tracker) *types.StringSet {
+	ret := types.NewStringSet()
+	ret.Add(url)
 	// exit condition 1: over depth (download mode has depth-1)
 	if depth > cfg.Depth() || (cfg.Download() && depth > cfg.Depth()-1) {
-		return types.NewStringSet()
+		return ret
 	}
 	// exit condition 2: already visited
 	if !visited.ShouldVisit(url, depth) {
 		log.Printf("Already visited '%s'\n", url)
-		return types.NewStringSet()
+		return ret
 	}
 
 	log.Printf("Scanning url '%s'", url)
@@ -97,9 +92,8 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 	} else {
 		log.Printf("Found %d links at url '%s'\n", len(links), url)
 	}
-	visited.Add(url, depth)
-	ret := types.NewStringSet()
 	ret.Add(links...)
+	visited.Add(url, depth)
 
 	for _, link := range links {
 		more := getLinksRecursive(cfg, ctx, link, depth+1, visited)
