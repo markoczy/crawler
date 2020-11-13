@@ -105,6 +105,9 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 }
 
 func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string, error) {
+	var err error
+	tab, cancel := chromedp.NewContext(ctx)
+	defer cancel()
 	var buf []string
 	tasks := chromedp.Tasks{}
 	if len(cfg.Headers()) > 0 {
@@ -115,7 +118,7 @@ func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string,
 		tasks = append(tasks, chromedp.Sleep(cfg.ExtraWaittime()))
 	}
 	tasks = append(tasks, chromedp.Evaluate(js.GetLinks, &buf))
-	if err := chromedp.Run(ctx, tasks); err != nil {
+	if err = chromedp.Run(tab, tasks); err != nil {
 		return []string{}, err
 	}
 	ret := []string{}
