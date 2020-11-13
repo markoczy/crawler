@@ -12,6 +12,7 @@ type CrawlerConfig interface {
 	Download() bool
 	Depth() int
 	Timeout() time.Duration
+	ExtraWaittime() time.Duration
 	Headers() map[string]interface{}
 	Include() *regexp.Regexp
 	Exclude() *regexp.Regexp
@@ -29,6 +30,7 @@ type crawlerConfig struct {
 	download             bool
 	depth                int
 	timeout              time.Duration
+	extraWaittime        time.Duration
 	headers              map[string]interface{}
 	include              *regexp.Regexp
 	exclude              *regexp.Regexp
@@ -57,6 +59,10 @@ func (cfg *crawlerConfig) Depth() int {
 
 func (cfg *crawlerConfig) Timeout() time.Duration {
 	return cfg.timeout
+}
+
+func (cfg *crawlerConfig) ExtraWaittime() time.Duration {
+	return cfg.extraWaittime
 }
 
 func (cfg *crawlerConfig) Headers() map[string]interface{} {

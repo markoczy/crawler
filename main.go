@@ -110,10 +110,11 @@ func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string,
 	if len(cfg.Headers()) > 0 {
 		tasks = append(tasks, network.SetExtraHTTPHeaders(network.Headers(cfg.Headers())))
 	}
-	tasks = append(tasks,
-		actions.NavigateAndWaitLoaded(url, cfg.Timeout()),
-		chromedp.Evaluate(js.GetLinks, &buf),
-	)
+	tasks = append(tasks, actions.NavigateAndWaitLoaded(url, cfg.Timeout()))
+	if cfg.ExtraWaittime() > 0 {
+		tasks = append(tasks, chromedp.Sleep(cfg.ExtraWaittime()))
+	}
+	tasks = append(tasks, chromedp.Evaluate(js.GetLinks, &buf))
 	if err := chromedp.Run(ctx, tasks); err != nil {
 		return []string{}, err
 	}

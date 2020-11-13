@@ -35,6 +35,7 @@ func ParseFlags() CrawlerConfig {
 	urlPtr := flag.String("url", unset, "the initial url, cannot be unset, prefix http or https is required, supports permutations in square brackets like '[1-100]' or '[a,b,c]', can also refer a file with prefix '@'")
 	downloadPtr := flag.Bool("download", false, "switches to download mode")
 	timeoutPtr := flag.Int64("timeout", 60000, "general timeout in millis when loading a webpage")
+	extraWaittimePtr := flag.Int64("extra-waittime", 0, "additional waittime after load")
 	depthPtr := flag.Int("depth", 0, "max depth for link crawler")
 	flag.Var(&headerFlags, "header", "headers to set, multiple allowed, prefix '@' to adress a file")
 	authPtr := flag.String("auth", unset, "basic auth header to set, auth must be provided in format 'user:password'")
@@ -62,6 +63,7 @@ func ParseFlags() CrawlerConfig {
 	cfg.namingPattern = *namingPatternPtr
 
 	cfg.timeout = time.Duration(*timeoutPtr) * time.Millisecond
+	cfg.extraWaittime = time.Duration(*extraWaittimePtr) * time.Millisecond
 	logFile := *logFilePtr
 	if logFile != unset {
 		var file *os.File
