@@ -138,8 +138,7 @@ func parseHeaderFlag(token string, m *map[string]interface{}) error {
 	if len(split) < 2 {
 		return fmt.Errorf("Could not parse header for token '%s' missing key value separator ':'", token)
 	}
-	// avoid dupes by setting lowercase (header keys are case insensitive)
-	key := strings.ToLower(strings.TrimSpace(split[0]))
+	key := strings.TrimSpace(split[0])
 	val := strings.TrimSpace(split[1])
 	(*m)[key] = val
 	return nil
