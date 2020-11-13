@@ -19,7 +19,7 @@ type NavigateAndWaitLoadedAction struct {
 }
 
 func (action *NavigateAndWaitLoadedAction) Do(ctx context.Context) error {
-	loadErr := make(chan error, 1)
+	loadErr := make(chan error, 10)
 	go func() {
 		defer recoverChannelClosed()
 		time.Sleep(action.timeout)
