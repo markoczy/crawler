@@ -98,6 +98,10 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 	visited.Add(url, depth)
 
 	for _, link := range links {
+		if !cfg.FollowInclude().MatchString(link) || cfg.FollowExclude().MatchString(link) {
+			log.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", link)
+			continue
+		}
 		more := getLinksRecursive(cfg, ctx, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
@@ -108,7 +112,7 @@ func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string,
 	var err error
 	tab, cancel := chromedp.NewContext(ctx)
 	defer cancel()
-	var buf []string
+	var ret []string
 	tasks := chromedp.Tasks{}
 	if len(cfg.Headers()) > 0 {
 		tasks = append(tasks, network.SetExtraHTTPHeaders(network.Headers(cfg.Headers())))
@@ -117,17 +121,9 @@ func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string,
 	if cfg.ExtraWaittime() > 0 {
 		tasks = append(tasks, chromedp.Sleep(cfg.ExtraWaittime()))
 	}
-	tasks = append(tasks, chromedp.Evaluate(js.GetLinks, &buf))
+	tasks = append(tasks, chromedp.Evaluate(js.GetLinks, &ret))
 	if err = chromedp.Run(tab, tasks); err != nil {
 		return []string{}, err
-	}
-	ret := []string{}
-	for _, val := range buf {
-		if !cfg.FollowInclude().MatchString(val) || cfg.FollowExclude().MatchString(val) {
-			log.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", val)
-			continue
-		}
-		ret = append(ret, val)
 	}
 	return ret, nil
 }
