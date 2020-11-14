@@ -6,6 +6,7 @@ import (
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/markoczy/crawler/types"
 	"golang.org/x/exp/errors/fmt"
 )
 
@@ -19,30 +20,26 @@ type NavigateAndWaitLoadedAction struct {
 }
 
 func (action *NavigateAndWaitLoadedAction) Do(ctx context.Context) error {
-	loadErr := make(chan error, 10)
+	chErr := types.NewErrorSwitchChannel()
 	go func() {
-		defer recoverChannelClosed()
 		time.Sleep(action.timeout)
-		loadErr <- fmt.Errorf("Timeout while loading DOM Content")
+		chErr.Send(fmt.Errorf("Timeout while loading DOM Content"))
 	}()
 	chromedp.ListenTarget(ctx, func(v interface{}) {
-		defer recoverChannelClosed()
 		switch v.(type) {
 		case *page.EventDomContentEventFired:
-			loadErr <- nil
+			chErr.Send(nil)
 		}
 	})
 	go func() {
-		defer recoverChannelClosed()
 		err := chromedp.Run(ctx, chromedp.Tasks{
 			chromedp.Navigate(action.url),
 		})
 		if err != nil {
-			loadErr <- err
+			chErr.Send(err)
 		}
 	}()
-	err := <-loadErr
-	close(loadErr)
+	err := chErr.Receive()
 	return err
 }
 
