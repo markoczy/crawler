@@ -99,9 +99,9 @@ func exitError(s string, code int) {
 	os.Exit(code)
 }
 
-func parseHeaderFlags(headerFlags []string) (map[string]interface{}, error) {
+func parseHeaderFlags(headerFlags []string) (map[string]string, error) {
 	var err error
-	ret := map[string]interface{}{}
+	ret := map[string]string{}
 	for _, s := range headerFlags {
 		if strings.HasPrefix(s, "@") {
 			if err = loadHeaderFile(s[1:], &ret); err != nil {
@@ -116,7 +116,7 @@ func parseHeaderFlags(headerFlags []string) (map[string]interface{}, error) {
 	return ret, nil
 }
 
-func loadHeaderFile(path string, m *map[string]interface{}) error {
+func loadHeaderFile(path string, m *map[string]string) error {
 	var err error
 	var dat []byte
 	if dat, err = ioutil.ReadFile(path); err != nil {
@@ -131,7 +131,7 @@ func loadHeaderFile(path string, m *map[string]interface{}) error {
 	return nil
 }
 
-func parseHeaderFlag(token string, m *map[string]interface{}) error {
+func parseHeaderFlag(token string, m *map[string]string) error {
 	token = strings.TrimSpace(token)
 	if token == empty {
 		return nil
@@ -146,12 +146,12 @@ func parseHeaderFlag(token string, m *map[string]interface{}) error {
 	return nil
 }
 
-func addAuthHeader(auth string, m *map[string]interface{}) {
+func addAuthHeader(auth string, m *map[string]string) {
 	val := base64.StdEncoding.EncodeToString([]byte(auth))
 	(*m)["authorization"] = "Basic " + val
 }
 
-func addUserAgentHeader(userAgent string, m *map[string]interface{}) {
+func addUserAgentHeader(userAgent string, m *map[string]string) {
 	(*m)["user-agent"] = userAgent
 }
 

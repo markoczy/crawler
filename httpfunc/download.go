@@ -34,7 +34,7 @@ func DownloadFile(cfg cli.CrawlerConfig, url string) error {
 	return downloadFile(url, filename, cfg.Headers())
 }
 
-func downloadFile(url, filename string, headers map[string]interface{}) error {
+func downloadFile(url, filename string, headers map[string]string) error {
 	var err error
 	var req *http.Request
 	var resp *http.Response
@@ -43,7 +43,7 @@ func downloadFile(url, filename string, headers map[string]interface{}) error {
 	}
 
 	for key, val := range headers {
-		req.Header.Set(key, mapToString(val))
+		req.Header.Set(key, val)
 	}
 
 	client := &http.Client{}
@@ -60,17 +60,6 @@ func downloadFile(url, filename string, headers map[string]interface{}) error {
 	defer out.Close()
 	_, err = io.Copy(out, resp.Body)
 	return err
-}
-
-func mapToString(val interface{}) string {
-	switch val.(type) {
-	case string:
-		return val.(string)
-	case []byte:
-		return string(val.([]byte))
-	default:
-		return fmt.Sprintf("%v", val)
-	}
 }
 
 func createFolder(filename string) error {

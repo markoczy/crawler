@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chromedp/chromedp"
+	"github.com/go-rod/rod"
 	"github.com/markoczy/crawler/cli"
 )
 
@@ -138,8 +138,8 @@ func TestGetLinks3(t *testing.T) {
 }
 
 func testGetLinks(t *testing.T, depth int, timeout time.Duration, expected []string) {
-	ctx, cancel := chromedp.NewContext(context.Background())
-	defer cancel()
+	browser := rod.New().MustConnect()
+	defer browser.MustClose()
 
 	os.Args = []string{"cmd",
 		"-url=" + "http://localhost:50000/",
@@ -149,7 +149,7 @@ func testGetLinks(t *testing.T, depth int, timeout time.Duration, expected []str
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	cfg := cli.ParseFlags()
 
-	links := getAllLinks(cfg, ctx)
+	links := getAllLinks(cfg, browser)
 	for _, link := range links.Values() {
 		log.Println("Link:", link)
 	}
