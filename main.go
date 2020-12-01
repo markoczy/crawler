@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"sort"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/markoczy/crawler/httpfunc"
 	"github.com/markoczy/crawler/js"
 	"github.com/markoczy/crawler/types"
-	"golang.org/x/exp/errors/fmt"
 )
 
 func main() {
