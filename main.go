@@ -112,9 +112,10 @@ func getLinks(cfg cli.CrawlerConfig, browser *rod.Browser, url string) ([]string
 	var page *rod.Page
 	ret := []string{}
 	// Navigate and load
-	if page, err = browser.Page(proto.TargetCreateTarget{URL: url}); err != nil {
+	if page, err = browser.Page(proto.TargetCreateTarget{}); err != nil {
 		return ret, err
 	}
+	// Set Headers
 	var cleanup func()
 	if len(cfg.Headers()) > 0 {
 		headers := []string{}
@@ -125,22 +126,28 @@ func getLinks(cfg cli.CrawlerConfig, browser *rod.Browser, url string) ([]string
 			return ret, err
 		}
 	}
+	// Navigate and wait loaded
+	if err = page.Navigate(url); err != nil {
+		return ret, nil
+	}
 	pageWithTimeout := page.Timeout(cfg.Timeout())
 	if err = pageWithTimeout.WaitLoad(); err != nil {
 		return ret, err
 	}
+	// Wait additional time
 	if cfg.ExtraWaittime() != 0 {
 		if _, err = page.Evaluate(js.CreateWaitFunc(cfg.ExtraWaittime())); err != nil {
 			return ret, err
 		}
 	}
+	// Get links
 	if resp, err = page.Eval(js.GetLinks); err != nil {
 		return ret, err
 	}
 	for _, link := range resp.Value.Arr() {
 		ret = append(ret, link.String())
 	}
-	// Cleanup Context
+	// Cleanup Context and close tab
 	if cleanup != nil {
 		cleanup()
 	}
