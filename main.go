@@ -1,18 +1,17 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"log"
+	"net/http"
 	"sort"
 
-	"github.com/chromedp/cdproto/network"
-	"github.com/chromedp/chromedp"
-	"github.com/markoczy/crawler/actions"
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/markoczy/crawler/cli"
 	"github.com/markoczy/crawler/httpfunc"
 	"github.com/markoczy/crawler/js"
 	"github.com/markoczy/crawler/types"
-	"golang.org/x/exp/errors/fmt"
 )
 
 func main() {
@@ -30,10 +29,14 @@ func test(cfg cli.CrawlerConfig) {
 }
 
 func exec(cfg cli.CrawlerConfig) {
-	ctx, cancel := chromedp.NewContext(context.Background())
-	defer cancel()
+	browser := rod.New().MustConnect()
+	defer browser.MustClose()
 
-	links := getAllLinks(cfg, ctx).Values()
+	router := browser.HijackRequests()
+	defer router.MustStop()
+	hijackRequests(router, cfg)
+
+	links := getAllLinks(cfg, browser).Values()
 	sort.Strings(links)
 	for _, link := range links {
 		if cfg.Download() {
@@ -47,6 +50,18 @@ func exec(cfg cli.CrawlerConfig) {
 	}
 }
 
+func hijackRequests(router *rod.HijackRouter, cfg cli.CrawlerConfig) {
+	router.MustAdd("*/*", func(ctx *rod.Hijack) {
+		for k, v := range cfg.Headers() {
+			ctx.Request.Req().Header.Set(k, v)
+		}
+		if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
+			log.Println("ERROR: Request interception failed:", err)
+		}
+	})
+	go router.Run()
+}
+
 // Helpers
 
 func check(err error) {
@@ -57,11 +72,11 @@ func check(err error) {
 
 // Maybe outsource
 
-func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
+func getAllLinks(cfg cli.CrawlerConfig, browser *rod.Browser) *types.StringSet {
 	allLinks := types.NewStringSet()
 	allVisited := types.NewTracker()
 	for _, perm := range cfg.Urls() {
-		links := getLinksRecursive(cfg, ctx, perm, 0, allVisited)
+		links := getLinksRecursive(cfg, browser, perm, 0, allVisited)
 		for _, link := range links.Values() {
 			if !cfg.Include().MatchString(link) || cfg.Exclude().MatchString(link) {
 				log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", link)
@@ -73,7 +88,7 @@ func getAllLinks(cfg cli.CrawlerConfig, ctx context.Context) *types.StringSet {
 	return allLinks
 }
 
-func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, depth int, visited *types.Tracker) *types.StringSet {
+func getLinksRecursive(cfg cli.CrawlerConfig, browser *rod.Browser, url string, depth int, visited *types.Tracker) *types.StringSet {
 	ret := types.NewStringSet()
 	ret.Add(url)
 	// exit condition 1: over depth (download mode has depth-1)
@@ -89,7 +104,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 	log.Printf("Scanning url '%s'", url)
 	var links []string
 	var err error
-	if links, err = getLinks(cfg, ctx, url); err != nil {
+	if links, err = getLinks(cfg, browser, url); err != nil {
 		log.Printf("ERROR: Failed to get links from url '%s': %s\n", url, err.Error())
 	} else {
 		log.Printf("Found %d links at url '%s'\n", len(links), url)
@@ -102,28 +117,47 @@ func getLinksRecursive(cfg cli.CrawlerConfig, ctx context.Context, url string, d
 			log.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", link)
 			continue
 		}
-		more := getLinksRecursive(cfg, ctx, link, depth+1, visited)
+		more := getLinksRecursive(cfg, browser, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
 	return ret
 }
 
-func getLinks(cfg cli.CrawlerConfig, ctx context.Context, url string) ([]string, error) {
+func getLinks(cfg cli.CrawlerConfig, browser *rod.Browser, url string) ([]string, error) {
 	var err error
-	tab, cancel := chromedp.NewContext(ctx)
-	defer cancel()
-	var ret []string
-	tasks := chromedp.Tasks{}
-	if len(cfg.Headers()) > 0 {
-		tasks = append(tasks, network.SetExtraHTTPHeaders(network.Headers(cfg.Headers())))
+	var resp *proto.RuntimeRemoteObject
+	var page *rod.Page
+	ret := []string{}
+	// Navigate and load
+	if page, err = browser.Page(proto.TargetCreateTarget{}); err != nil {
+		return ret, err
 	}
-	tasks = append(tasks, actions.NavigateAndWaitLoaded(url, cfg.Timeout()))
-	if cfg.ExtraWaittime() > 0 {
-		tasks = append(tasks, chromedp.Sleep(cfg.ExtraWaittime()))
+	// Set Headers
+	var cleanup func()
+	if err = page.Navigate(url); err != nil {
+		return ret, nil
 	}
-	tasks = append(tasks, chromedp.Evaluate(js.GetLinks, &ret))
-	if err = chromedp.Run(tab, tasks); err != nil {
-		return []string{}, err
+	pageWithTimeout := page.Timeout(cfg.Timeout())
+	if err = pageWithTimeout.WaitLoad(); err != nil {
+		return ret, err
 	}
-	return ret, nil
+	// Wait additional time
+	if cfg.ExtraWaittime() != 0 {
+		if _, err = page.Evaluate(js.CreateWaitFunc(cfg.ExtraWaittime())); err != nil {
+			return ret, err
+		}
+	}
+	// Get links
+	if resp, err = page.Eval(js.GetLinks); err != nil {
+		return ret, err
+	}
+	for _, link := range resp.Value.Arr() {
+		ret = append(ret, link.String())
+	}
+	// Cleanup Context and close tab
+	if cleanup != nil {
+		cleanup()
+	}
+	err = page.Close()
+	return ret, err
 }
