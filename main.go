@@ -33,7 +33,7 @@ func exec(cfg cli.CrawlerConfig) {
 	defer browser.MustClose()
 
 	router := browser.HijackRequests()
-	defer router.MustStop()
+	defer router.Stop()
 	hijackRequests(router, cfg)
 
 	links := getAllLinks(cfg, browser).Values()
