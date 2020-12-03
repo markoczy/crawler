@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"sort"
 
 	"github.com/go-rod/rod"
@@ -31,6 +32,10 @@ func exec(cfg cli.CrawlerConfig) {
 	browser := rod.New().MustConnect()
 	defer browser.MustClose()
 
+	router := browser.HijackRequests()
+	defer router.MustStop()
+	hijackRequests(router, cfg)
+
 	links := getAllLinks(cfg, browser).Values()
 	sort.Strings(links)
 	for _, link := range links {
@@ -43,6 +48,18 @@ func exec(cfg cli.CrawlerConfig) {
 			fmt.Println(link)
 		}
 	}
+}
+
+func hijackRequests(router *rod.HijackRouter, cfg cli.CrawlerConfig) {
+	router.MustAdd("*/*", func(ctx *rod.Hijack) {
+		for k, v := range cfg.Headers() {
+			ctx.Request.Req().Header.Set(k, v)
+		}
+		if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
+			log.Println("ERROR: Request interception failed:", err)
+		}
+	})
+	go router.Run()
 }
 
 // Helpers
@@ -117,16 +134,6 @@ func getLinks(cfg cli.CrawlerConfig, browser *rod.Browser, url string) ([]string
 	}
 	// Set Headers
 	var cleanup func()
-	if len(cfg.Headers()) > 0 {
-		headers := []string{}
-		for k, v := range cfg.Headers() {
-			headers = append(headers, k, v)
-		}
-		if cleanup, err = page.SetExtraHeaders(headers); err != nil {
-			return ret, err
-		}
-	}
-	// Navigate and wait loaded
 	if err = page.Navigate(url); err != nil {
 		return ret, nil
 	}
