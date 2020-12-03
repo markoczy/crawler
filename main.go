@@ -81,7 +81,9 @@ func getAllLinks(cfg cli.CrawlerConfig, browser *rod.Browser) *types.StringSet {
 			if !cfg.Include().MatchString(link) || cfg.Exclude().MatchString(link) {
 				log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", link)
 				links.Remove(link)
+				continue
 			}
+			log.Printf("Found Link '%s'\n", link)
 		}
 		allLinks.Add(links.Values()...)
 	}
@@ -117,6 +119,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, browser *rod.Browser, url string, 
 			log.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", link)
 			continue
 		}
+		log.Printf("Following link '%s'\n", link)
 		more := getLinksRecursive(cfg, browser, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
