@@ -99,7 +99,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 	var links []string
 	var err error
 	if links, err = getLinks(cfg, url); err != nil {
-		if err == context.Canceled {
+		if err.Error() == context.Canceled.Error() {
 			log.Printf("WARN: Failed to get links from url '%s': Context was canceled, retrying...\n", url)
 			retryAttempts := 1
 			shouldRetry := true
@@ -108,7 +108,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 				log.Printf("Retry attempt %d of %d\n", retryAttempts, cfg.ReconnectAttempts())
 				reconnect(cfg)
 				if links, err = getLinks(cfg, url); err != nil {
-					shouldRetry = err == context.Canceled
+					shouldRetry = err.Error() == context.Canceled.Error()
 				} else {
 					log.Printf("Succeeded at retry attempt %d\n", retryAttempts)
 					shouldRetry = false
@@ -193,10 +193,10 @@ func reconnect(cfg cli.CrawlerConfig) {
 }
 
 func disconnect() {
-	if browser != nil {
-		browser.Close()
-	}
 	if router != nil {
 		router.Stop()
+	}
+	if browser != nil {
+		browser.Close()
 	}
 }
