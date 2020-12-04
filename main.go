@@ -187,9 +187,7 @@ func reconnect(cfg cli.CrawlerConfig) {
 		for k, v := range cfg.Headers() {
 			ctx.Request.Req().Header.Set(k, v)
 		}
-		if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
-			log.Println("ERROR: Request interception failed:", err)
-		}
+		ctx.LoadResponse(http.DefaultClient, true)
 	})
 	go router.Run()
 }
