@@ -21,6 +21,7 @@ type CrawlerConfig interface {
 	NamingCapture() *regexp.Regexp
 	NamingCaptureFolders() bool
 	NamingPattern() string
+	ReconnectAttempts() int
 	String() string
 }
 
@@ -39,6 +40,7 @@ type crawlerConfig struct {
 	namingCapture        *regexp.Regexp
 	namingCaptureFolders bool
 	namingPattern        string
+	reconnectAttempts    int
 }
 
 func (cfg *crawlerConfig) Test() bool {
@@ -97,6 +99,10 @@ func (cfg *crawlerConfig) NamingPattern() string {
 	return cfg.namingPattern
 }
 
+func (cfg *crawlerConfig) ReconnectAttempts() int {
+	return cfg.reconnectAttempts
+}
+
 func (cfg *crawlerConfig) String() string {
-	return fmt.Sprintf("CrawlerConfig [test: '%v', urls: '%v', download: '%v', depth: '%v', timeout: '%v', headers: '%v', include: '%v', exclude: '%v', follow-include: '%v', follow-exclude: '%v', namingCapture: '%v', namingCaptureFolders: '%v', namingPattern: '%v']", cfg.test, cfg.urls, cfg.download, cfg.depth, cfg.timeout, cfg.headers, cfg.include.String(), cfg.exclude.String(), cfg.followInclude.String(), cfg.followExclude.String(), cfg.namingCapture.String(), cfg.namingCaptureFolders, cfg.namingPattern)
+	return fmt.Sprintf("CrawlerConfig [test: '%v', urls: '%v', download: '%v', depth: '%v', timeout: '%v', headers: '%v', include: '%v', exclude: '%v', follow-include: '%v', follow-exclude: '%v', namingCapture: '%v', namingCaptureFolders: '%v', namingPattern: '%v', reconnectAttempts: '%v']", cfg.test, cfg.urls, cfg.download, cfg.depth, cfg.timeout, cfg.headers, cfg.include.String(), cfg.exclude.String(), cfg.followInclude.String(), cfg.followExclude.String(), cfg.namingCapture.String(), cfg.namingCaptureFolders, cfg.namingPattern, cfg.reconnectAttempts)
 }

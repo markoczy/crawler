@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,10 +9,17 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+
+	// "context"
 	"github.com/markoczy/crawler/cli"
 	"github.com/markoczy/crawler/httpfunc"
 	"github.com/markoczy/crawler/js"
 	"github.com/markoczy/crawler/types"
+)
+
+var (
+	browser *rod.Browser
+	router  *rod.HijackRouter
 )
 
 func main() {
@@ -29,14 +37,10 @@ func test(cfg cli.CrawlerConfig) {
 }
 
 func exec(cfg cli.CrawlerConfig) {
-	browser := rod.New().MustConnect()
-	defer browser.MustClose()
+	reconnect(cfg)
+	defer disconnect()
 
-	router := browser.HijackRequests()
-	defer router.Stop()
-	hijackRequests(router, cfg)
-
-	links := getAllLinks(cfg, browser).Values()
+	links := getAllLinks(cfg).Values()
 	sort.Strings(links)
 	for _, link := range links {
 		if cfg.Download() {
@@ -50,18 +54,6 @@ func exec(cfg cli.CrawlerConfig) {
 	}
 }
 
-func hijackRequests(router *rod.HijackRouter, cfg cli.CrawlerConfig) {
-	router.MustAdd("*/*", func(ctx *rod.Hijack) {
-		for k, v := range cfg.Headers() {
-			ctx.Request.Req().Header.Set(k, v)
-		}
-		if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
-			log.Println("ERROR: Request interception failed:", err)
-		}
-	})
-	go router.Run()
-}
-
 // Helpers
 
 func check(err error) {
@@ -72,11 +64,11 @@ func check(err error) {
 
 // Maybe outsource
 
-func getAllLinks(cfg cli.CrawlerConfig, browser *rod.Browser) *types.StringSet {
+func getAllLinks(cfg cli.CrawlerConfig) *types.StringSet {
 	allLinks := types.NewStringSet()
 	allVisited := types.NewTracker()
 	for _, perm := range cfg.Urls() {
-		links := getLinksRecursive(cfg, browser, perm, 0, allVisited)
+		links := getLinksRecursive(cfg, perm, 0, allVisited)
 		for _, link := range links.Values() {
 			if !cfg.Include().MatchString(link) || cfg.Exclude().MatchString(link) {
 				log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", link)
@@ -90,7 +82,7 @@ func getAllLinks(cfg cli.CrawlerConfig, browser *rod.Browser) *types.StringSet {
 	return allLinks
 }
 
-func getLinksRecursive(cfg cli.CrawlerConfig, browser *rod.Browser, url string, depth int, visited *types.Tracker) *types.StringSet {
+func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *types.Tracker) *types.StringSet {
 	ret := types.NewStringSet()
 	ret.Add(url)
 	// exit condition 1: over depth (download mode has depth-1)
@@ -106,8 +98,30 @@ func getLinksRecursive(cfg cli.CrawlerConfig, browser *rod.Browser, url string, 
 	log.Printf("Scanning url '%s'", url)
 	var links []string
 	var err error
-	if links, err = getLinks(cfg, browser, url); err != nil {
-		log.Printf("ERROR: Failed to get links from url '%s': %s\n", url, err.Error())
+	if links, err = getLinks(cfg, url); err != nil {
+		if err == context.Canceled {
+			log.Printf("WARN: Failed to get links from url '%s': Context was canceled, retrying...\n", url)
+			retryAttempts := 1
+			shouldRetry := true
+			success := false
+			for retryAttempts <= cfg.ReconnectAttempts() && shouldRetry {
+				log.Printf("Retry attempt %d of %d\n", retryAttempts, cfg.ReconnectAttempts())
+				reconnect(cfg)
+				if links, err = getLinks(cfg, url); err != nil {
+					shouldRetry = err == context.Canceled
+				} else {
+					log.Printf("Succeeded at retry attempt %d\n", retryAttempts)
+					shouldRetry = false
+					success = true
+				}
+				retryAttempts++
+			}
+			if !success {
+				log.Printf("ERROR: Failed to get links from url '%s': %s\n", url, err.Error())
+			}
+		} else {
+			log.Printf("ERROR: Failed to get links from url '%s': %s\n", url, err.Error())
+		}
 	} else {
 		log.Printf("Found %d links at url '%s'\n", len(links), url)
 	}
@@ -120,13 +134,13 @@ func getLinksRecursive(cfg cli.CrawlerConfig, browser *rod.Browser, url string, 
 			continue
 		}
 		log.Printf("Following link '%s'\n", link)
-		more := getLinksRecursive(cfg, browser, link, depth+1, visited)
+		more := getLinksRecursive(cfg, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
 	return ret
 }
 
-func getLinks(cfg cli.CrawlerConfig, browser *rod.Browser, url string) ([]string, error) {
+func getLinks(cfg cli.CrawlerConfig, url string) ([]string, error) {
 	var err error
 	var resp *proto.RuntimeRemoteObject
 	var page *rod.Page
@@ -163,4 +177,28 @@ func getLinks(cfg cli.CrawlerConfig, browser *rod.Browser, url string) ([]string
 	}
 	err = page.Close()
 	return ret, err
+}
+
+func reconnect(cfg cli.CrawlerConfig) {
+	disconnect()
+	browser = rod.New().MustConnect()
+	router = browser.HijackRequests()
+	router.MustAdd("*/*", func(ctx *rod.Hijack) {
+		for k, v := range cfg.Headers() {
+			ctx.Request.Req().Header.Set(k, v)
+		}
+		if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
+			log.Println("ERROR: Request interception failed:", err)
+		}
+	})
+	go router.Run()
+}
+
+func disconnect() {
+	if browser != nil {
+		browser.Close()
+	}
+	if router != nil {
+		router.Stop()
+	}
 }

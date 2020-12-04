@@ -48,6 +48,8 @@ func ParseFlags() CrawlerConfig {
 	namingCapturePtr := flag.String("naming-capture", `^http(s|)://(?P<path>.*)/(?P<name>\w+)(\.|)(?P<ext>(\.\w+)|)$`, "regex for capturing groups of output file name, use in combination with 'naming-pattern', only applies to download mode")
 	namingCaptureFoldersPtr := flag.Bool("naming-capture-folders", false, "specifies wether '/' inside capture groups are treated as subfolders, if false the '/' characters in the capture groups are replaced by '_', only applies to download mode")
 	namingPatternPtr := flag.String("naming-pattern", "<path>/<name><ext>", "pattern to resolve output file name, use '<name>' to reference a capture group from 'naming-capture' flag, only applies to download mode")
+	reconnectAttemptsPtr := flag.Int("reconnect", 5, "Amount of reconnect attempts when context was closed")
+	flag.Var(&headerFlags, "header", "headers to set, multiple allowed, prefix '@' to adress a file")
 	flag.Parse()
 
 	url := *urlPtr
@@ -61,6 +63,7 @@ func ParseFlags() CrawlerConfig {
 	cfg.namingCapture = parseRegex(*namingCapturePtr, "naming-pattern")
 	cfg.namingCaptureFolders = *namingCaptureFoldersPtr
 	cfg.namingPattern = *namingPatternPtr
+	cfg.reconnectAttempts = *reconnectAttemptsPtr
 
 	cfg.timeout = time.Duration(*timeoutPtr) * time.Millisecond
 	cfg.extraWaittime = time.Duration(*extraWaittimePtr) * time.Millisecond
