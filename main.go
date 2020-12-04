@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -187,7 +189,19 @@ func reconnect(cfg cli.CrawlerConfig) {
 		for k, v := range cfg.Headers() {
 			ctx.Request.Req().Header.Set(k, v)
 		}
-		ctx.LoadResponse(http.DefaultClient, true)
+		success := false
+		for !success {
+			if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
+				if !strings.Contains(err.Error(), "unsupported protocol scheme") {
+					log.Printf("ERROR: Failed to load response: '%s', retrying in 1s...\n", err.Error())
+					time.Sleep(1 * time.Second)
+				} else {
+					success = true
+				}
+			} else {
+				success = true
+			}
+		}
 	})
 	go router.Run()
 }
