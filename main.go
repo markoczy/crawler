@@ -22,6 +22,11 @@ import (
 var (
 	browser *rod.Browser
 	router  *rod.HijackRouter
+
+	validConnectErrs = []string{
+		"unsupported protocol scheme",
+		"The requested name is valid, but no data of the requested type was found",
+	}
 )
 
 func main() {
@@ -192,7 +197,7 @@ func reconnect(cfg cli.CrawlerConfig) {
 		success := false
 		for !success {
 			if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
-				if !strings.Contains(err.Error(), "unsupported protocol scheme") {
+				if !checkConnectError(err) {
 					log.Printf("ERROR: Failed to load response: '%s', retrying in 1s...\n", err.Error())
 					time.Sleep(1 * time.Second)
 				} else {
@@ -213,4 +218,12 @@ func disconnect() {
 	if browser != nil {
 		browser.Close()
 	}
+}
+
+func checkConnectError(err error) bool {
+	for _, e := range validConnectErrs {
+		strings.Contains(err.Error(), e)
+		return true
+	}
+	return false
 }
