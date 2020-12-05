@@ -2,26 +2,28 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
+	"github.com/ysmood/gson"
 
 	// "context"
 	"github.com/markoczy/crawler/cli"
 	"github.com/markoczy/crawler/httpfunc"
 	"github.com/markoczy/crawler/js"
+	"github.com/markoczy/crawler/logger"
 	"github.com/markoczy/crawler/types"
 )
 
 var (
 	browser *rod.Browser
 	router  *rod.HijackRouter
+	log     logger.Logger
 
 	validConnectErrs = []string{
 		"unsupported protocol scheme",
@@ -32,7 +34,11 @@ var (
 
 func main() {
 	cfg := cli.ParseFlags()
-	log.Println("Parsed Params:", cfg)
+	if log == nil {
+		// logger may be initialized before (test scope)
+		log = logger.New(cfg.LogWarn(), cfg.LogInfo(), cfg.LogDebug())
+	}
+	log.Info("Parsed Params: %s", cfg.String())
 	if cfg.Test() {
 		test(cfg)
 		return
@@ -46,15 +52,15 @@ func test(cfg cli.CrawlerConfig) {
 
 func exec(cfg cli.CrawlerConfig) {
 	reconnect(cfg)
-	defer disconnect()
+	defer disconnect(cfg)
 
 	links := getAllLinks(cfg).Values()
 	sort.Strings(links)
 	for _, link := range links {
 		if cfg.Download() {
-			log.Printf("Downloading from URL '%s'\n", link)
+			log.Info("Downloading from URL '%s'", link)
 			if err := httpfunc.DownloadFile(cfg, link); err != nil {
-				log.Printf("ERROR: Failed to download content at url '%s': %s\n", link, err.Error())
+				log.Error("Failed to download content at url '%s': %s", link, err.Error())
 			}
 		} else {
 			fmt.Println(link)
@@ -79,11 +85,11 @@ func getAllLinks(cfg cli.CrawlerConfig) *types.StringSet {
 		links := getLinksRecursive(cfg, perm, 0, allVisited)
 		for _, link := range links.Values() {
 			if !cfg.Include().MatchString(link) || cfg.Exclude().MatchString(link) {
-				log.Printf("Not including '%s': URL not matching include or matching exclude pattern\n", link)
+				log.Info("Not including '%s': URL not matching include or matching exclude pattern", link)
 				links.Remove(link)
 				continue
 			}
-			log.Printf("Found Link '%s'\n", link)
+			log.Info("Found Link '%s'", link)
 		}
 		allLinks.Add(links.Values()...)
 	}
@@ -99,96 +105,97 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 	}
 	// exit condition 2: already visited
 	if !visited.ShouldVisit(url, depth) {
-		log.Printf("Already visited '%s'\n", url)
+		log.Info("Already visited '%s'", url)
 		return ret
 	}
 
-	log.Printf("Scanning url '%s'", url)
+	log.Info("Scanning url '%s'", url)
 	var links []string
 	var err error
 	if links, err = getLinks(cfg, url); err != nil {
 		if err.Error() == context.Canceled.Error() {
-			log.Printf("WARN: Failed to get links from url '%s': Context was canceled, retrying...\n", url)
+			log.Warn("Failed to get links from url '%s': Context was canceled, retrying...", url)
 			retryAttempts := 1
 			shouldRetry := true
 			success := false
 			for retryAttempts <= cfg.ReconnectAttempts() && shouldRetry {
-				log.Printf("Retry attempt %d of %d\n", retryAttempts, cfg.ReconnectAttempts())
+				log.Info("Retry attempt %d of %d", retryAttempts, cfg.ReconnectAttempts())
 				reconnect(cfg)
 				if links, err = getLinks(cfg, url); err != nil {
 					shouldRetry = err.Error() == context.Canceled.Error()
 				} else {
-					log.Printf("Succeeded at retry attempt %d\n", retryAttempts)
+					log.Info("Succeeded at retry attempt %d", retryAttempts)
 					shouldRetry = false
 					success = true
 				}
 				retryAttempts++
 			}
 			if !success {
-				log.Printf("ERROR: Failed to get links from url '%s': %s\n", url, err.Error())
+				log.Error("Failed to get links from url '%s': %s", url, err.Error())
 			}
 		} else {
-			log.Printf("ERROR: Failed to get links from url '%s': %s\n", url, err.Error())
+			log.Error("Failed to get links from url '%s': %s", url, err.Error())
 		}
 	} else {
-		log.Printf("Found %d links at url '%s'\n", len(links), url)
+		log.Info("Found %d links at url '%s'", len(links), url)
 	}
 	ret.Add(links...)
 	visited.Add(url, depth)
 
 	for _, link := range links {
 		if !cfg.FollowInclude().MatchString(link) || cfg.FollowExclude().MatchString(link) {
-			log.Printf("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", link)
+			log.Info("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", link)
 			continue
 		}
-		log.Printf("Following link '%s'\n", link)
+		log.Info("Following link '%s'", link)
 		more := getLinksRecursive(cfg, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
 	return ret
 }
 
-func getLinks(cfg cli.CrawlerConfig, url string) ([]string, error) {
-	var err error
-	var resp *proto.RuntimeRemoteObject
+func getLinks(cfg cli.CrawlerConfig, url string) (ret []string, err error) {
+	var resp gson.JSON
 	var page *rod.Page
-	ret := []string{}
+	ret = []string{}
+	defer func() {
+		ex := recover()
+		err = getErr(ex)
+		if err != nil {
+			log.Debug("Cached error at getLinks: %s", err.Error())
+		}
+		if page != nil {
+			log.Debug("Closing page")
+			if e2 := page.Close(); e2 != nil {
+				log.Debug("Failed to close page: %s", e2.Error())
+			}
+		}
+	}()
+
 	// Navigate and load
-	if page, err = browser.Page(proto.TargetCreateTarget{}); err != nil {
-		return ret, err
-	}
-	// Set Headers
-	var cleanup func()
-	if err = page.Navigate(url); err != nil {
-		return ret, nil
-	}
-	pageWithTimeout := page.Timeout(cfg.Timeout())
-	if err = pageWithTimeout.WaitLoad(); err != nil {
-		return ret, err
-	}
+	log.Debug("Opening page")
+	page = browser.MustPage("")
+	log.Debug("Navigating")
+	page.Timeout(cfg.Timeout()).MustNavigate(url).MustWaitLoad()
+
 	// Wait additional time
 	if cfg.ExtraWaittime() != 0 {
-		if _, err = page.Evaluate(js.CreateWaitFunc(cfg.ExtraWaittime())); err != nil {
-			return ret, err
-		}
+		log.Debug("Waiting for additional waittime")
+		page.MustEvaluate(js.CreateWaitFunc(cfg.ExtraWaittime()))
 	}
+
 	// Get links
-	if resp, err = page.Eval(js.GetLinks); err != nil {
-		return ret, err
-	}
-	for _, link := range resp.Value.Arr() {
+	log.Debug("Running getLinks JS func")
+	resp = page.MustEval(js.GetLinks)
+	log.Debug("Parsing JSON")
+	for _, link := range resp.Arr() {
 		ret = append(ret, link.String())
 	}
-	// Cleanup Context and close tab
-	if cleanup != nil {
-		cleanup()
-	}
-	err = page.Close()
-	return ret, err
+	return
 }
 
 func reconnect(cfg cli.CrawlerConfig) {
-	disconnect()
+	disconnect(cfg)
 	browser = rod.New().MustConnect()
 	router = browser.HijackRequests()
 	router.MustAdd("*/*", func(ctx *rod.Hijack) {
@@ -199,9 +206,10 @@ func reconnect(cfg cli.CrawlerConfig) {
 		for !success {
 			if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
 				if !checkConnectError(err) {
-					log.Printf("ERROR: Failed to load response: '%s', retrying in 1s...\n", err.Error())
+					log.Error("Failed to load response: %s, retrying in 1s...", err.Error())
 					time.Sleep(1 * time.Second)
 				} else {
+					log.Debug("Ignoring Connect error: %s", err.Error())
 					success = true
 				}
 			} else {
@@ -212,16 +220,14 @@ func reconnect(cfg cli.CrawlerConfig) {
 	go router.Run()
 }
 
-func disconnect() {
+func disconnect(cfg cli.CrawlerConfig) {
 	if router != nil {
 		router.Stop()
 	}
 	if browser != nil {
-		pages, _ := browser.Pages()
-		for _, page := range pages {
-			page.Close()
+		if err := browser.Close(); err != nil {
+			log.Debug("Failed to close browser: %s", err.Error())
 		}
-		browser.Close()
 	}
 }
 
@@ -231,4 +237,18 @@ func checkConnectError(err error) bool {
 		return true
 	}
 	return false
+}
+
+func getErr(ex interface{}) error {
+	if ex != nil {
+		switch x := ex.(type) {
+		case string:
+			return errors.New(x)
+		case error:
+			return x
+		default:
+			return errors.New(fmt.Sprintf("%v", x))
+		}
+	}
+	return nil
 }

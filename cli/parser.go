@@ -49,6 +49,9 @@ func ParseFlags() CrawlerConfig {
 	namingCaptureFoldersPtr := flag.Bool("naming-capture-folders", false, "specifies wether '/' inside capture groups are treated as subfolders, if false the '/' characters in the capture groups are replaced by '_', only applies to download mode")
 	namingPatternPtr := flag.String("naming-pattern", "<path>/<name><ext>", "pattern to resolve output file name, use '<name>' to reference a capture group from 'naming-capture' flag, only applies to download mode")
 	reconnectAttemptsPtr := flag.Int("reconnect", 5, "Amount of reconnect attempts when context was closed")
+	logWarnPtr := flag.Bool("v", false, "Log warn")
+	logInfoPtr := flag.Bool("vv", false, "Log info (implies '-v')")
+	logDebugPtr := flag.Bool("vvv", false, "Log debug (implies '-vv')")
 	flag.Parse()
 
 	url := *urlPtr
@@ -63,6 +66,9 @@ func ParseFlags() CrawlerConfig {
 	cfg.namingCaptureFolders = *namingCaptureFoldersPtr
 	cfg.namingPattern = *namingPatternPtr
 	cfg.reconnectAttempts = *reconnectAttemptsPtr
+	cfg.logWarn = *logWarnPtr
+	cfg.logInfo = *logInfoPtr
+	cfg.logDebug = *logDebugPtr
 
 	cfg.timeout = time.Duration(*timeoutPtr) * time.Millisecond
 	cfg.extraWaittime = time.Duration(*extraWaittimePtr) * time.Millisecond
@@ -91,7 +97,6 @@ func ParseFlags() CrawlerConfig {
 	} else if strings.ToLower(userAgent) != none {
 		addUserAgentHeader(userAgent, &cfg.headers)
 	}
-
 	return &cfg
 }
 

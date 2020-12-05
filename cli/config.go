@@ -7,6 +7,7 @@ import (
 )
 
 type CrawlerConfig interface {
+	// General Config
 	Test() bool
 	Urls() []string
 	Download() bool
@@ -22,6 +23,11 @@ type CrawlerConfig interface {
 	NamingCaptureFolders() bool
 	NamingPattern() string
 	ReconnectAttempts() int
+	// Log Config
+	LogWarn() bool
+	LogInfo() bool
+	LogDebug() bool
+	// Stringer
 	String() string
 }
 
@@ -41,6 +47,9 @@ type crawlerConfig struct {
 	namingCaptureFolders bool
 	namingPattern        string
 	reconnectAttempts    int
+	logWarn              bool
+	logInfo              bool
+	logDebug             bool
 }
 
 func (cfg *crawlerConfig) Test() bool {
@@ -103,6 +112,18 @@ func (cfg *crawlerConfig) ReconnectAttempts() int {
 	return cfg.reconnectAttempts
 }
 
+func (cfg *crawlerConfig) LogWarn() bool {
+	return cfg.logWarn
+}
+
+func (cfg *crawlerConfig) LogInfo() bool {
+	return cfg.logInfo
+}
+
+func (cfg *crawlerConfig) LogDebug() bool {
+	return cfg.logDebug
+}
+
 func (cfg *crawlerConfig) String() string {
-	return fmt.Sprintf("CrawlerConfig [test: '%v', urls: '%v', download: '%v', depth: '%v', timeout: '%v', headers: '%v', include: '%v', exclude: '%v', follow-include: '%v', follow-exclude: '%v', namingCapture: '%v', namingCaptureFolders: '%v', namingPattern: '%v', reconnectAttempts: '%v']", cfg.test, cfg.urls, cfg.download, cfg.depth, cfg.timeout, cfg.headers, cfg.include.String(), cfg.exclude.String(), cfg.followInclude.String(), cfg.followExclude.String(), cfg.namingCapture.String(), cfg.namingCaptureFolders, cfg.namingPattern, cfg.reconnectAttempts)
+	return fmt.Sprintf("CrawlerConfig [test: '%v', urls: '%v', download: '%v', depth: '%v', timeout: '%v', headers: '%v', include: '%v', exclude: '%v', follow-include: '%v', follow-exclude: '%v', namingCapture: '%v', namingCaptureFolders: '%v', namingPattern: '%v', reconnectAttempts: '%v', logWarn: '%v', logInfo: '%v', logDebug: '%v']", cfg.test, cfg.urls, cfg.download, cfg.depth, cfg.timeout, cfg.headers, cfg.include.String(), cfg.exclude.String(), cfg.followInclude.String(), cfg.followExclude.String(), cfg.namingCapture.String(), cfg.namingCaptureFolders, cfg.namingPattern, cfg.reconnectAttempts, cfg.logWarn, cfg.logInfo, cfg.logDebug)
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,9 +11,11 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/markoczy/crawler/cli"
+	"github.com/markoczy/crawler/logger"
 )
 
 func TestMain(m *testing.M) {
+	log = logger.New(true, true, true)
 	handler := http.FileServer(http.Dir("./tests"))
 	http.Handle("/", handler)
 	server := &http.Server{Addr: ":50000", Handler: handler}
@@ -31,12 +32,12 @@ func TestMain(m *testing.M) {
 	if err := server.Shutdown(ctx); err != nil {
 		panic("Server shutdown has failed")
 	}
-	log.Println("After server shutdown")
+	log.Info("After server shutdown")
 	os.Exit(ret)
 }
 
 func TestGetLinks0(t *testing.T) {
-	log.Println("Start TestGetLinks0")
+	log.Info("Start TestGetLinks0")
 	expected := []string{
 		"http://localhost:50000/",
 		// Level 0
@@ -45,11 +46,11 @@ func TestGetLinks0(t *testing.T) {
 	}
 	depth := 0
 	testGetLinks(t, depth, 1*time.Second, expected)
-	log.Println("Completed TestGetLinks0")
+	log.Info("Completed TestGetLinks0")
 }
 
 func TestGetLinks1(t *testing.T) {
-	log.Println("Start TestGetLinks1")
+	log.Info("Start TestGetLinks1")
 	expected := []string{
 		"http://localhost:50000/",
 		// Level 0
@@ -63,11 +64,11 @@ func TestGetLinks1(t *testing.T) {
 	}
 	depth := 1
 	testGetLinks(t, depth, 1*time.Second, expected)
-	log.Println("Completed TestGetLinks1")
+	log.Info("Completed TestGetLinks1")
 }
 
 func TestGetLinks2(t *testing.T) {
-	log.Println("Start TestGetLinks2")
+	log.Info("Start TestGetLinks2")
 	expected := []string{
 		"http://localhost:50000/",
 		// Level 0
@@ -90,11 +91,11 @@ func TestGetLinks2(t *testing.T) {
 	}
 	depth := 2
 	testGetLinks(t, depth, 1*time.Second, expected)
-	log.Println("Completed TestGetLinks2")
+	log.Info("Completed TestGetLinks2")
 }
 
 func TestGetLinks3(t *testing.T) {
-	log.Println("Start TestGetLinks3")
+	log.Info("Start TestGetLinks3")
 	expected := []string{
 		"http://localhost:50000/",
 		// Level 0
@@ -134,7 +135,7 @@ func TestGetLinks3(t *testing.T) {
 	}
 	depth := 3
 	testGetLinks(t, depth, 1*time.Second, expected)
-	log.Println("Completed TestGetLinks3")
+	log.Info("Completed TestGetLinks3")
 }
 
 func testGetLinks(t *testing.T, depth int, timeout time.Duration, expected []string) {
@@ -149,23 +150,23 @@ func testGetLinks(t *testing.T, depth int, timeout time.Duration, expected []str
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	cfg := cli.ParseFlags()
 
-	links := getAllLinks(cfg, browser)
+	links := getAllLinks(cfg)
 	for _, link := range links.Values() {
-		log.Println("Link:", link)
+		log.Info("Link:", link)
 	}
 
 	for _, v := range expected {
 		if !links.Exists(v) {
-			log.Println("Test Failed - Missing link:", v)
+			log.Info("Test Failed - Missing link:", v)
 			t.Fail()
 		}
 		links.Remove(v)
 	}
 
 	if links.Len() != 0 {
-		log.Println("Test Failed - Unexpected links:")
+		log.Info("Test Failed - Unexpected links:")
 		for _, link := range links.Values() {
-			log.Println(link)
+			log.Info(link)
 		}
 		t.Fail()
 	}
