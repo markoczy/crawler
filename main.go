@@ -52,7 +52,7 @@ func test(cfg cli.CrawlerConfig) {
 
 func exec(cfg cli.CrawlerConfig) {
 	reconnect(cfg)
-	defer disconnect(cfg)
+	defer disconnect()
 
 	links := getAllLinks(cfg).Values()
 	sort.Strings(links)
@@ -195,7 +195,7 @@ func getLinks(cfg cli.CrawlerConfig, url string) (ret []string, err error) {
 }
 
 func reconnect(cfg cli.CrawlerConfig) {
-	disconnect(cfg)
+	disconnect()
 	browser = rod.New().MustConnect()
 	router = browser.HijackRequests()
 	router.MustAdd("*/*", func(ctx *rod.Hijack) {
@@ -220,7 +220,7 @@ func reconnect(cfg cli.CrawlerConfig) {
 	go router.Run()
 }
 
-func disconnect(cfg cli.CrawlerConfig) {
+func disconnect() {
 	if router != nil {
 		router.Stop()
 	}
