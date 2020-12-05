@@ -201,17 +201,20 @@ func reconnect(cfg cli.CrawlerConfig) {
 	router = browser.HijackRequests()
 	router.MustAdd("*/*", func(ctx *rod.Hijack) {
 		headers := []*proto.FetchHeaderEntry{}
-		for k, v := range ctx.Request.Headers() {
-			headers = append(headers, &proto.FetchHeaderEntry{
-				Name:  k,
-				Value: v.Str(),
-			})
-		}
-		for k, v := range cfg.Headers() {
-			headers = append(headers, &proto.FetchHeaderEntry{
-				Name:  k,
-				Value: v,
-			})
+		if len(cfg.Headers()) == 0 {
+			for k, v := range ctx.Request.Headers() {
+				headers = append(headers, &proto.FetchHeaderEntry{
+					Name:  k,
+					Value: v.Str(),
+				})
+			}
+		} else {
+			for k, v := range cfg.Headers() {
+				headers = append(headers, &proto.FetchHeaderEntry{
+					Name:  k,
+					Value: v,
+				})
+			}
 		}
 		ctx.ContinueRequest(&proto.FetchContinueRequest{Headers: headers})
 	})
