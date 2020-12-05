@@ -143,7 +143,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 
 	for _, link := range links {
 		if !cfg.FollowInclude().MatchString(link) || cfg.FollowExclude().MatchString(link) {
-			log.Info("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern\n", link)
+			log.Info("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern", link)
 			continue
 		}
 		log.Info("Following link '%s'", link)
