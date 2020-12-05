@@ -217,6 +217,10 @@ func disconnect() {
 		router.Stop()
 	}
 	if browser != nil {
+		pages, _ := browser.Pages()
+		for _, page := range pages {
+			page.Close()
+		}
 		browser.Close()
 	}
 }
