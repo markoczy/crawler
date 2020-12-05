@@ -25,7 +25,7 @@ var (
 
 	validConnectErrs = []string{
 		"unsupported protocol scheme",
-		"The requested name is valid, but no data of the requested type was found",
+		"no data of the requested type was found",
 		"context canceled",
 	}
 )
