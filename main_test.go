@@ -157,7 +157,7 @@ func testGetLinks(t *testing.T, depth int, timeout time.Duration, expected []str
 
 	for _, v := range expected {
 		if !links.Exists(v) {
-			log.Info("Test Failed - Missing link:", v)
+			log.Info("Test Failed - Missing link: %v", v)
 			t.Fail()
 		}
 		links.Remove(v)

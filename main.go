@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/ysmood/gson"
 
 	// "context"
@@ -196,26 +195,25 @@ func getLinks(cfg cli.CrawlerConfig, url string) (ret []string, err error) {
 
 func reconnect(cfg cli.CrawlerConfig) {
 	disconnect()
+	log.Debug("Opening Browser")
 	browser = rod.New().MustConnect()
+	log.Debug("Adding Hijack Router")
 	router = browser.HijackRequests()
 	router.MustAdd("*/*", func(ctx *rod.Hijack) {
+		headers := []*proto.FetchHeaderEntry{}
+		for k, v := range ctx.Request.Headers() {
+			headers = append(headers, &proto.FetchHeaderEntry{
+				Name:  k,
+				Value: v.Str(),
+			})
+		}
 		for k, v := range cfg.Headers() {
-			ctx.Request.Req().Header.Set(k, v)
+			headers = append(headers, &proto.FetchHeaderEntry{
+				Name:  k,
+				Value: v,
+			})
 		}
-		success := false
-		for !success {
-			if err := ctx.LoadResponse(http.DefaultClient, true); err != nil {
-				if !checkConnectError(err) {
-					log.Error("Failed to load response: %s, retrying in 1s...", err.Error())
-					time.Sleep(1 * time.Second)
-				} else {
-					log.Debug("Ignoring Connect error: %s", err.Error())
-					success = true
-				}
-			} else {
-				success = true
-			}
-		}
+		ctx.ContinueRequest(&proto.FetchContinueRequest{Headers: headers})
 	})
 	go router.Run()
 }
