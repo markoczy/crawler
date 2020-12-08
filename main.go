@@ -100,7 +100,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 	ret := types.NewStringSet()
 	ret.Add(url)
 	// exit condition 1: over depth (download mode has depth-1)
-	if depth > cfg.Depth() || (cfg.Download() && depth > cfg.Depth()-1) {
+	if cfg.Download() && depth > cfg.Depth()-1 {
 		return ret
 	}
 	// exit condition 2: already visited
