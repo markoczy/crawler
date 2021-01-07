@@ -100,6 +100,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 	ret.Add(url)
 	// exit condition 1: over depth (download mode has depth-1)
 	if depth > cfg.Depth() || (cfg.Download() && depth > cfg.Depth()-1) {
+		log.Info("Not Following link '%s': Max depth reached", url)
 		return ret
 	}
 	// exit condition 2: already visited
@@ -146,7 +147,6 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 			log.Info("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern", link)
 			continue
 		}
-		// log.Info("Following link '%s'", link)
 		more := getLinksRecursive(cfg, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
