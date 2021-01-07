@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -113,7 +112,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 	var links []string
 	var err error
 	if links, err = getLinks(cfg, url); err != nil {
-		if err.Error() == context.Canceled.Error() {
+		if strings.Contains(err.Error(), "context canceled") {
 			log.Warn("Failed to get links from url '%s': Context was canceled, retrying...", url)
 			retryAttempts := 1
 			shouldRetry := true
@@ -122,7 +121,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 				log.Info("Retry attempt %d of %d", retryAttempts, cfg.ReconnectAttempts())
 				reconnect(cfg)
 				if links, err = getLinks(cfg, url); err != nil {
-					shouldRetry = err.Error() == context.Canceled.Error()
+					shouldRetry = strings.Contains(err.Error(), "context canceled")
 				} else {
 					log.Info("Succeeded at retry attempt %d", retryAttempts)
 					shouldRetry = false
@@ -147,7 +146,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 			log.Info("Not following link '%s': URL not matching follow-include or matching follow-exclude pattern", link)
 			continue
 		}
-		log.Info("Following link '%s'", link)
+		// log.Info("Following link '%s'", link)
 		more := getLinksRecursive(cfg, link, depth+1, visited)
 		ret.Add(more.Values()...)
 	}
