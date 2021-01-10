@@ -125,6 +125,7 @@ func getLinksRecursive(cfg cli.CrawlerConfig, url string, depth int, visited *ty
 					shouldRetry = strings.Contains(err.Error(), "context canceled")
 				} else {
 					log.Info("Succeeded at retry attempt %d", retryAttempts)
+					log.Info("Found %d links at url '%s'", len(links), url)
 					shouldRetry = false
 					success = true
 				}
