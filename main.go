@@ -58,7 +58,7 @@ func exec(cfg cli.CrawlerConfig) {
 	for _, link := range links {
 		if cfg.Download() {
 			log.Info("Downloading from URL '%s'", link)
-			if err := httpfunc.DownloadFile(cfg, link); err != nil {
+			if err := httpfunc.DownloadFile(cfg, log, link); err != nil {
 				log.Error("Failed to download content at url '%s': %s", link, err.Error())
 			}
 		} else {

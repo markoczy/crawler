@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/markoczy/crawler/cli"
+	"github.com/markoczy/crawler/logger"
 )
 
 var (
@@ -17,7 +18,37 @@ var (
 	matchIllegalPathOrSep = regexp.MustCompile(`\?|\%|\*|\:|\||\"|\<|\>|\,|\;|\=|\\|/`)
 )
 
-func DownloadFile(cfg cli.CrawlerConfig, url string) error {
+func checkRedirect(cfg cli.CrawlerConfig, url string) (string, error) {
+	var err error
+	var req *http.Request
+	if req, err = http.NewRequest("GET", url, nil); err != nil {
+		return "", err
+	}
+
+	for key, val := range cfg.Headers() {
+		req.Header.Set(key, val)
+	}
+
+	var via []*http.Request
+
+	client := &http.Client{}
+	err = client.CheckRedirect(req, via)
+	if err != nil {
+		return "", err
+	}
+	if via == nil || len(via) == 0 {
+		return url, nil
+	}
+	return via[len(via)-1].URL.String(), nil
+}
+
+func DownloadFile(cfg cli.CrawlerConfig, log logger.Logger, url string) error {
+	var err error
+	url, err = checkRedirect(cfg, url)
+	if err != nil {
+		return err
+	}
+	log.Info("URL after redirect:", url)
 	if !cfg.NamingCapture().MatchString(url) {
 		return fmt.Errorf("Cannot download: Naming Capture does not match URL string '%s'", url)
 	}
