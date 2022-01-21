@@ -12,7 +12,7 @@ function absolutePath(href) {
     try {
         var link = document.createElement("a");
         link.href = href;
-        return link.href;
+        return link.href.replace('?','/?');
     } catch (error) {}
 }
 function getLinks() {
@@ -21,7 +21,7 @@ function getLinks() {
     var allElements = document.querySelectorAll("*");
     for (var el of allElements) {
         if (el.href && typeof el.href === 'string') {
-            array.push(el.href);
+            array.push(el.href.replace('?','/?'));
         } else if (el.src && typeof el.src === 'string') {
             var absolute = absolutePath(el.src);
             array.push(absolute);
