@@ -1,6 +1,7 @@
 package httpfunc
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,6 +22,7 @@ var (
 func checkRedirect(cfg cli.CrawlerConfig, url string) (string, error) {
 	var err error
 	var req *http.Request
+
 	if req, err = http.NewRequest("GET", url, nil); err != nil {
 		return "", err
 	}
@@ -29,17 +31,20 @@ func checkRedirect(cfg cli.CrawlerConfig, url string) (string, error) {
 		req.Header.Set(key, val)
 	}
 
-	var via []*http.Request
-
 	client := &http.Client{}
-	err = client.CheckRedirect(req, via)
-	if err != nil {
-		return "", err
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return errors.New("Redirect")
 	}
-	if via == nil || len(via) == 0 {
-		return url, nil
+
+	response, _ := client.Do(req)
+	if response != nil && 300 <= response.StatusCode && 400 > response.StatusCode {
+		r, err := response.Location()
+		if err != nil {
+			return "", err
+		}
+		return r.String(), nil
 	}
-	return via[len(via)-1].URL.String(), nil
+	return url, nil
 }
 
 func DownloadFile(cfg cli.CrawlerConfig, log logger.Logger, url string) error {
