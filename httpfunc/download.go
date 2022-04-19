@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/markoczy/crawler/cli"
+	"github.com/markoczy/crawler/logger"
 )
 
 var (
@@ -17,7 +18,7 @@ var (
 	matchIllegalPathOrSep = regexp.MustCompile(`\?|\%|\*|\:|\||\"|\<|\>|\,|\;|\=|\\|/`)
 )
 
-func DownloadFile(cfg cli.CrawlerConfig, url string) error {
+func DownloadFile(url string, cfg cli.CrawlerConfig, log logger.Logger) error {
 	if !cfg.NamingCapture().MatchString(url) {
 		return fmt.Errorf("Cannot download: Naming Capture does not match URL string '%s'", url)
 	}
@@ -31,6 +32,10 @@ func DownloadFile(cfg cli.CrawlerConfig, url string) error {
 		}
 	}
 
+	if cfg.SkipExisting() && fileExists(filename) {
+		log.Info("Skipping download from url '%s' as local file '%s' already exists", url, filename)
+		return nil
+	}
 	return downloadFile(url, filename, cfg.Headers())
 }
 
@@ -51,8 +56,8 @@ func downloadFile(url, filename string, headers map[string]string) error {
 		return err
 	}
 	defer resp.Body.Close()
-
 	createFolder(filename)
+
 	out, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -72,4 +77,11 @@ func sanitizePath(input string, replaceSep bool) string {
 		return matchIllegalPathOrSep.ReplaceAllString(input, "_")
 	}
 	return matchIllegalPath.ReplaceAllString(input, "_")
+}
+
+func fileExists(filename string) bool {
+	if _, err := os.Stat(filename); err == nil {
+		return true
+	}
+	return false
 }

@@ -11,6 +11,7 @@ type CrawlerConfig interface {
 	Test() bool
 	Urls() []string
 	Download() bool
+	SkipExisting() bool
 	Depth() int
 	Timeout() time.Duration
 	ExtraWaittime() time.Duration
@@ -35,6 +36,7 @@ type crawlerConfig struct {
 	test                 bool
 	urls                 []string
 	download             bool
+	skipExisting         bool
 	depth                int
 	timeout              time.Duration
 	extraWaittime        time.Duration
@@ -62,6 +64,10 @@ func (cfg *crawlerConfig) Urls() []string {
 
 func (cfg *crawlerConfig) Download() bool {
 	return cfg.download
+}
+
+func (cfg *crawlerConfig) SkipExisting() bool {
+	return cfg.skipExisting
 }
 
 func (cfg *crawlerConfig) Depth() int {

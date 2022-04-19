@@ -34,6 +34,7 @@ func ParseFlags() CrawlerConfig {
 	testPtr := flag.Bool("test", false, "tests patterns and outputs download file name")
 	urlPtr := flag.String("url", unset, "the initial url, cannot be unset, prefix http or https is required, supports permutations in square brackets like '[1-100]' or '[a,b,c]', can also refer a file with prefix '@'")
 	downloadPtr := flag.Bool("download", false, "switches to download mode")
+	skipExistingPtr := flag.Bool("skip-existing", false, "Skip local files if already existing (only applies if -download specified)")
 	timeoutPtr := flag.Int64("timeout", 60000, "general timeout in millis when loading a webpage")
 	extraWaittimePtr := flag.Int64("extra-waittime", 0, "additional waittime after load")
 	depthPtr := flag.Int("depth", 0, "max depth for link crawler")
@@ -57,6 +58,7 @@ func ParseFlags() CrawlerConfig {
 	url := *urlPtr
 	cfg.test = *testPtr
 	cfg.download = *downloadPtr
+	cfg.skipExisting = *skipExistingPtr
 	cfg.depth = *depthPtr
 	cfg.include = parseRegex(*includePtr, "include")
 	cfg.exclude = parseRegex(*excludePtr, "exclude")
@@ -81,7 +83,7 @@ func ParseFlags() CrawlerConfig {
 		log.SetOutput(file)
 	}
 	if url == unset {
-		exitError(fmt.Sprintf("Mandatory value 'url' was not defined"), errUndefinedFlag)
+		exitError("Mandatory value 'url' was not defined", errUndefinedFlag)
 	}
 	cfg.urls = parseUrls(url)
 	if cfg.headers, err = parseHeaderFlags(headerFlags.Values()); err != nil {
